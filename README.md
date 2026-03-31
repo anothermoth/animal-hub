@@ -92,6 +92,20 @@ If you’re building a client that maintains local state:
   - You can also update your local case status from it, but `CASE_UPDATED` should be the source of truth.
 - On reconnect, catch up using `afterSeq` (see above), then resume websocket listening.
 
+### Minimal reference client
+
+See `examples/minimal-client.js` for a tiny demo client that:
+
+- fetches backlog with `/events?afterSeq=...`
+- connects to `/ws` for live events
+- maintains an in-memory case map
+
+Run it:
+
+```bash
+BASE_URL=http://localhost:3999 node examples/minimal-client.js
+```
+
 To watch events without adding any deps, you can use a tiny Node one-liner:
 
 ```bash
