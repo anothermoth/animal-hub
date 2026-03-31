@@ -12,6 +12,11 @@ let lastSeq = Number(process.env.AFTER_SEQ ?? 0);
 const cases = new Map();
 const commitments = new Map();
 
+const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPORT,FOSTER')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 function summarizeCase(caseId) {
   const c = cases.get(caseId);
   if (!c) return null;
@@ -47,9 +52,9 @@ function summarizeCase(caseId) {
   const breakdown2 = typeStatusParts ? ` typeStatus=[${typeStatusParts}]` : '';
 
   // Simple "needs" heuristic for coordination.
-  // (Kept intentionally dumb for MVP: missing type, or no CONFIRMED for that type.)
+  // missing required type, or no CONFIRMED for that type.
   const needs = [];
-  for (const t of ['RESCUE_PULL', 'TRANSPORT', 'FOSTER']) {
+  for (const t of requiredTypes) {
     const totalForType = byType.get(t) ?? 0;
     const confirmedForType = byTypeStatus.get(`${t}:CONFIRMED`) ?? 0;
     if (totalForType === 0) needs.push(`NEEDS_${t}`);
