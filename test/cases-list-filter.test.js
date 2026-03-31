@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { buildApp } from '../src/app.js';
+
+test('GET /cases supports status/risk/state filters', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c1 = await app.inject({
+    method: 'POST',
+    url: '/cases',
+    payload: { riskLevel: 'CODE_RED', location: { city: 'Austin', state: 'TX' } },
+  });
+  const c2 = await app.inject({
+    method: 'POST',
+    url: '/cases',
+    payload: { riskLevel: 'HIGH', location: { city: 'Miami', state: 'FL' } },
+  });
+
+  assert.equal(c1.statusCode, 201);
+  assert.equal(c2.statusCode, 201);
+
+  const res1 = await app.inject({ method: 'GET', url: '/cases?risk=CODE_RED&state=TX&status=OPEN' });
+  assert.equal(res1.statusCode, 200);
+  const body1 = res1.json();
+  assert.equal(body1.items.length, 1);
+  assert.equal(body1.items[0].riskLevel, 'CODE_RED');
+
+  const res2 = await app.inject({ method: 'GET', url: '/cases?state=fl' });
+  assert.equal(res2.statusCode, 200);
+  const body2 = res2.json();
+  assert.equal(body2.items.length, 1);
+  assert.equal(body2.items[0].location.state, 'FL');
+
+  await app.close();
+});
+
+test('GET /cases rejects unknown risk/status values', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const badRisk = await app.inject({ method: 'GET', url: '/cases?risk=NOPE' });
+  assert.equal(badRisk.statusCode, 400);
+
+  const badStatus = await app.inject({ method: 'GET', url: '/cases?status=NOPE' });
+  assert.equal(badStatus.statusCode, 400);
+
+  await app.close();
+});
+
