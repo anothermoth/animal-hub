@@ -43,6 +43,7 @@ const ListEventsQuery = z
     limit: z.string().optional(),
     sinceTs: z.string().optional(),
     afterSeq: z.string().optional(),
+    caseId: z.string().optional(),
   })
   .strict();
 
@@ -102,6 +103,63 @@ export function buildApp(opts = {}) {
   app.register(websocket);
 
   app.get('/healthz', async () => ({ ok: true }));
+
+  // Global event stream (useful for dashboards / "what changed" views).
+  // Supports the same cursors as /cases/:id/events.
+  app.get('/events', async (req, reply) => {
+    const parsed = ListEventsQuery.safeParse(req.query ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
+    const q = parsed.data;
+
+    let since = null;
+    if (q.sinceTs) {
+      const d = new Date(String(q.sinceTs));
+      if (Number.isNaN(d.getTime())) return reply.code(400).send({ error: 'bad_query_sinceTs' });
+      since = d.toISOString();
+    }
+
+    let afterSeq = null;
+    if (q.afterSeq != null) {
+      const n = Number(q.afterSeq);
+      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_afterSeq' });
+      afterSeq = Math.floor(n);
+    }
+
+    let limit = 200;
+    if (q.limit != null) {
+      const n = Number(q.limit);
+      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
+      limit = Math.min(1000, Math.floor(n));
+    }
+
+    const caseId = q.caseId ? String(q.caseId) : null;
+
+    const items = [];
+    if (afterSeq != null || since) {
+      for (let i = 0; i < events.length; i++) {
+        const e = events[i];
+        if (caseId && e.caseId !== caseId) continue;
+        if (afterSeq != null && Number(e.seq ?? 0) <= afterSeq) continue;
+        if (since && String(e.ts) <= since) continue;
+        items.push(e);
+        if (items.length >= limit) break;
+      }
+    } else {
+      for (let i = events.length - 1; i >= 0; i--) {
+        const e = events[i];
+        if (caseId && e.caseId !== caseId) continue;
+        items.push(e);
+        if (items.length >= limit) break;
+      }
+      items.reverse();
+    }
+
+    return {
+      items,
+      nextSinceTs: items.length ? items[items.length - 1].ts : since,
+      nextAfterSeq: items.length ? items[items.length - 1].seq : afterSeq,
+    };
+  });
 
   app.get('/cases/:id/events', async (req, reply) => {
     const c = cases.get(req.params.id);

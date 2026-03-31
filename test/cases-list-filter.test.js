@@ -183,3 +183,27 @@ test('GET /cases/:id/events supports limit + afterSeq cursor', async () => {
 
   await app.close();
 });
+
+test('GET /events returns a global event feed (optionally filtered by caseId)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c1 = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const c2 = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+
+  await app.inject({ method: 'PATCH', url: `/cases/${c1.caseId}`, payload: { notes: 'a' } });
+  await app.inject({ method: 'PATCH', url: `/cases/${c2.caseId}`, payload: { notes: 'b' } });
+
+  const all = await app.inject({ method: 'GET', url: '/events?limit=10&afterSeq=0' });
+  assert.equal(all.statusCode, 200);
+  const a = all.json();
+  assert.ok(a.items.length >= 4);
+
+  const onlyC1 = await app.inject({ method: 'GET', url: `/events?limit=50&afterSeq=0&caseId=${c1.caseId}` });
+  assert.equal(onlyC1.statusCode, 200);
+  const b = onlyC1.json();
+  assert.ok(b.items.length >= 2);
+  assert.ok(b.items.every((e) => e.caseId === c1.caseId));
+
+  await app.close();
+});
