@@ -17,6 +17,9 @@ const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPOR
   .map((s) => s.trim())
   .filter(Boolean);
 
+const urgencyHours = Number(process.env.URGENCY_HOURS ?? 2);
+const urgencyMs = Number.isFinite(urgencyHours) && urgencyHours > 0 ? urgencyHours * 60 * 60 * 1000 : 0;
+
 function summarizeCase(caseId) {
   const c = cases.get(caseId);
   if (!c) return null;
@@ -62,7 +65,17 @@ function summarizeCase(caseId) {
   }
   const needsPart = needs.length ? ` needs=[${needs.join(',')}]` : '';
 
-  return `case ${caseId}${status}${risk}${deadline} commitments=${count}${breakdown}${breakdown2}${needsPart}`;
+  let urgencyPart = '';
+  if (urgencyMs > 0 && c.deadlineAt) {
+    const t = new Date(c.deadlineAt).getTime();
+    if (!Number.isNaN(t)) {
+      const dt = t - Date.now();
+      if (dt <= urgencyMs) urgencyPart = ' urgency=DUE_SOON';
+      if (dt <= 0) urgencyPart = ' urgency=OVERDUE';
+    }
+  }
+
+  return `case ${caseId}${status}${risk}${deadline}${urgencyPart} commitments=${count}${breakdown}${breakdown2}${needsPart}`;
 }
 
 function applyEvent(e) {

@@ -107,6 +107,9 @@ BASE_URL=http://localhost:3999 node examples/minimal-client.js
 
 # Optionally configure which commitment types are considered required
 REQUIRED_TYPES=RESCUE_PULL,TRANSPORT,FOSTER BASE_URL=http://localhost:3999 node examples/minimal-client.js
+
+# Optionally configure deadline urgency window (hours)
+URGENCY_HOURS=2 BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
