@@ -43,6 +43,13 @@ const ReleaseClaimBody = z
   })
   .strict();
 
+const PatchCaseStatusBody = z
+  .object({
+    status: CaseStatus,
+    claimant: z.string().min(1).optional(),
+  })
+  .strict();
+
 const ListCasesQuery = z
   .object({
     status: z.string().optional(), // comma-separated
@@ -357,6 +364,41 @@ export function buildApp(opts = {}) {
         payload: { from: existing.status, to: body.status, by: body.claimant ?? null },
       });
     }
+    return updated;
+  });
+
+  // Focused endpoint for status transitions with strict validation.
+  app.patch('/cases/:id/status', async (req, reply) => {
+    const existing = cases.get(req.params.id);
+    if (!existing) return reply.code(404).send({ error: 'not_found' });
+
+    const parsed = PatchCaseStatusBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
+
+    const { status, claimant } = parsed.data;
+    const nowMs = Date.now();
+    const now = new Date(nowMs).toISOString();
+
+    const claim = existing.claim ?? null;
+    const claimActive =
+      claim && typeof claim.expiresAt === 'string' && new Date(claim.expiresAt).getTime() > nowMs;
+    if (claimActive && claim.claimant !== claimant) {
+      return reply.code(409).send({ error: 'claim_required', claim });
+    }
+
+    const updated = { ...existing, status, updatedAt: now };
+    cases.set(existing.caseId, updated);
+    emitEvent({ kind: 'CASE_UPDATED', caseId: existing.caseId, ts: now, payload: updated });
+
+    if (status !== existing.status) {
+      emitEvent({
+        kind: 'STATUS_CHANGED',
+        caseId: existing.caseId,
+        ts: now,
+        payload: { from: existing.status, to: status, by: claimant ?? null },
+      });
+    }
+
     return updated;
   });
 

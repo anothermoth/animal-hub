@@ -300,3 +300,47 @@ test('PATCH /cases/:id enforces claim for status changes and emits STATUS_CHANGE
 
   await app.close();
 });
+
+test('PATCH /cases/:id/status provides strict status transitions', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  // No claim: status can change without claimant
+  const ok = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}/status`,
+    payload: { status: 'HOLD_REQUESTED' },
+  });
+  assert.equal(ok.statusCode, 200);
+  assert.equal(ok.json().status, 'HOLD_REQUESTED');
+
+  // Claim then enforce claimant
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/claim`, payload: { claimant: 'rescue-A', ttlMs: 60_000 } });
+
+  const denied = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}/status`,
+    payload: { status: 'RESCUE_TAGGED' },
+  });
+  assert.equal(denied.statusCode, 409);
+
+  const ok2 = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}/status`,
+    payload: { status: 'RESCUE_TAGGED', claimant: 'rescue-A' },
+  });
+  assert.equal(ok2.statusCode, 200);
+  assert.equal(ok2.json().status, 'RESCUE_TAGGED');
+
+  const bad = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}/status`,
+    payload: { status: 'NOPE' },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  await app.close();
+});
