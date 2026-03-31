@@ -440,3 +440,26 @@ test('GET /commitments/:id fetches a commitment by id', async () => {
 
   await app.close();
 });
+
+test('GET /commitments supports filtering by caseId', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c1 = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const c2 = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+
+  await app.inject({ method: 'POST', url: `/cases/${c1.caseId}/commitments`, payload: { type: 'FOSTER' } });
+  await app.inject({ method: 'POST', url: `/cases/${c2.caseId}/commitments`, payload: { type: 'TRANSPORT' } });
+
+  const all = await app.inject({ method: 'GET', url: '/commitments' });
+  assert.equal(all.statusCode, 200);
+  assert.ok(all.json().items.length >= 2);
+
+  const only1 = await app.inject({ method: 'GET', url: `/commitments?caseId=${c1.caseId}` });
+  assert.equal(only1.statusCode, 200);
+  const items = only1.json().items;
+  assert.equal(items.length, 1);
+  assert.equal(items[0].caseId, c1.caseId);
+
+  await app.close();
+});

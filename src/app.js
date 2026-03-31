@@ -113,6 +113,12 @@ const ListEventsQuery = z
   })
   .strict();
 
+const ListCommitmentsQuery = z
+  .object({
+    caseId: z.string().optional(),
+  })
+  .strict();
+
 function parseCsvSet(input) {
   if (!input) return null;
   const items = String(input)
@@ -567,6 +573,20 @@ export function buildApp(opts = {}) {
     const existing = commitments.get(req.params.id);
     if (!existing) return reply.code(404).send({ error: 'not_found' });
     return existing;
+  });
+
+  app.get('/commitments', async (req, reply) => {
+    const parsed = ListCommitmentsQuery.safeParse(req.query ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
+
+    const caseId = parsed.data.caseId ? String(parsed.data.caseId) : null;
+    const items = [];
+    for (const rec of commitments.values()) {
+      if (caseId && rec.caseId !== caseId) continue;
+      items.push(rec);
+    }
+    items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    return { items };
   });
 
   return app;
