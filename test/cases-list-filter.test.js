@@ -110,3 +110,37 @@ test('GET /cases/:id/commitments lists commitments for a case', async () => {
 
   await app.close();
 });
+
+test('GET /cases/:id/events returns an append-only event list for a case', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/commitments`,
+    payload: { type: 'FOSTER', party: { name: 'A' } },
+  });
+
+  const updatedCase = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { notes: 'updated' },
+  });
+  assert.equal(updatedCase.statusCode, 200);
+
+  const ev = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/events` });
+  assert.equal(ev.statusCode, 200);
+  const body = ev.json();
+
+  // CASE_CREATED + COMMITMENT_CREATED + CASE_UPDATED
+  assert.ok(body.items.length >= 3);
+  assert.ok(body.items.every((e) => e.caseId === c.caseId));
+
+  const missing = await app.inject({ method: 'GET', url: '/cases/nope/events' });
+  assert.equal(missing.statusCode, 404);
+
+  await app.close();
+});

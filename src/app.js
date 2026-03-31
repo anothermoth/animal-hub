@@ -58,6 +58,7 @@ export function buildApp(opts = {}) {
   const cases = opts.cases ?? new Map();
   const commitments = opts.commitments ?? new Map();
   const subscribers = new Set();
+  const events = opts.events ?? [];
 
   function listCommitmentsForCase(caseId) {
     const items = [];
@@ -70,6 +71,7 @@ export function buildApp(opts = {}) {
   }
 
   function emitEvent(event) {
+    events.push(event);
     const msg = JSON.stringify({ type: 'event', event });
     for (const ws of subscribers) {
       try {
@@ -80,12 +82,19 @@ export function buildApp(opts = {}) {
     }
   }
 
-  app.decorate('store', { cases, commitments });
+  app.decorate('store', { cases, commitments, events });
 
   app.register(cors, { origin: true });
   app.register(websocket);
 
   app.get('/healthz', async () => ({ ok: true }));
+
+  app.get('/cases/:id/events', async (req, reply) => {
+    const c = cases.get(req.params.id);
+    if (!c) return reply.code(404).send({ error: 'case_not_found' });
+    const items = events.filter((e) => e.caseId === c.caseId);
+    return { items };
+  });
 
   app.get('/ws', { websocket: true }, (connection) => {
     subscribers.add(connection.socket);
