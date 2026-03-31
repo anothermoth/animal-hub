@@ -70,6 +70,18 @@ All emitted events share a common envelope:
 - `seq` is monotonically increasing (useful for catch-up cursors)
 - `payload` is event-specific (case record, commitment record, status transition, etc.)
 
+### Event kinds (current)
+
+The server currently emits these `kind` values:
+
+- `CASE_CREATED` — `payload` is the full case record
+- `CASE_UPDATED` — `payload` is the full updated case record
+- `STATUS_CHANGED` — `payload`: `{ from, to, by }`
+- `COMMITMENT_CREATED` — `payload` is the full commitment record
+- `COMMITMENT_UPDATED` — `payload` is the full updated commitment record
+- `CASE_CLAIMED` — `payload`: `{ claimant, claimedAt, expiresAt }`
+- `CASE_RELEASED` — `payload`: `{ claimant }`
+
 To watch events without adding any deps, you can use a tiny Node one-liner:
 
 ```bash
