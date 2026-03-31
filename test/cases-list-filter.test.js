@@ -35,6 +35,33 @@ test('GET /cases supports status/risk/state filters', async () => {
   await app.close();
 });
 
+test('GET /cases supports offset/limit pagination', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  for (let i = 0; i < 5; i++) {
+    await app.inject({ method: 'POST', url: '/cases', payload: { name: `c${i}` } });
+  }
+
+  const page1 = await app.inject({ method: 'GET', url: '/cases?limit=2&offset=0' });
+  assert.equal(page1.statusCode, 200);
+  const b1 = page1.json();
+  assert.equal(b1.items.length, 2);
+  assert.ok(b1.total >= 5);
+
+  const page2 = await app.inject({ method: 'GET', url: '/cases?limit=2&offset=2' });
+  assert.equal(page2.statusCode, 200);
+  assert.equal(page2.json().items.length, 2);
+
+  const badLimit = await app.inject({ method: 'GET', url: '/cases?limit=0' });
+  assert.equal(badLimit.statusCode, 400);
+
+  const badOffset = await app.inject({ method: 'GET', url: '/cases?offset=-1' });
+  assert.equal(badOffset.statusCode, 400);
+
+  await app.close();
+});
+
 test('GET /cases rejects unknown risk/status values', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

@@ -101,6 +101,8 @@ const ListCasesQuery = z
     status: z.string().optional(), // comma-separated
     risk: z.string().optional(), // comma-separated
     state: z.string().optional(),
+    limit: z.string().optional(),
+    offset: z.string().optional(),
   })
   .strict();
 
@@ -359,6 +361,21 @@ export function buildApp(opts = {}) {
     }
 
     const state = q.state ? String(q.state).trim().toUpperCase() : null;
+
+    let limit = 200;
+    if (q.limit != null) {
+      const n = Number(q.limit);
+      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
+      limit = Math.min(1000, Math.floor(n));
+    }
+
+    let offset = 0;
+    if (q.offset != null) {
+      const n = Number(q.offset);
+      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_offset' });
+      offset = Math.floor(n);
+    }
+
     const items = [];
     for (const rec of cases.values()) {
       if (statusSet && !statusSet.has(rec.status)) continue;
@@ -369,7 +386,12 @@ export function buildApp(opts = {}) {
       }
       items.push(rec);
     }
-    return { items };
+
+    // stable ordering for pagination
+    items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    const total = items.length;
+    const paged = items.slice(offset, offset + limit);
+    return { items: paged, total, offset, limit };
   });
 
   app.get('/cases/:id', async (req, reply) => {
