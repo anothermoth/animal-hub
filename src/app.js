@@ -50,6 +50,35 @@ const PatchCaseStatusBody = z
   })
   .strict();
 
+const CreateCaseBody = z
+  .object({
+    externalIds: z.array(z.string()).optional(),
+    name: z.string().min(1).optional(),
+    species: z.string().optional(),
+    sex: z.string().optional(),
+    ageApprox: z.string().optional(),
+    breedGuess: z.string().optional(),
+    shelter: z.record(z.any()).optional(),
+    deadlineAt: z
+      .string()
+      .optional()
+      .refine((v) => v == null || !Number.isNaN(new Date(v).getTime()), { message: 'must be ISO date string' }),
+    riskLevel: RiskLevel.optional(),
+    status: CaseStatus.optional(),
+    location: z
+      .object({
+        city: z.string().optional(),
+        state: z.string().min(2).max(2).optional(),
+        lat: z.number().optional(),
+        lon: z.number().optional(),
+      })
+      .partial()
+      .optional(),
+    notes: z.string().optional(),
+    media: z.array(z.string()).optional(),
+  })
+  .strict();
+
 const ListCasesQuery = z
   .object({
     status: z.string().optional(), // comma-separated
@@ -245,7 +274,12 @@ export function buildApp(opts = {}) {
   });
 
   app.post('/cases', async (req, reply) => {
-    const body = req.body ?? {};
+    const parsed = CreateCaseBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
+    }
+
+    const body = parsed.data;
     const caseId = nanoid();
     const now = new Date().toISOString();
     const record = {
@@ -259,7 +293,7 @@ export function buildApp(opts = {}) {
       shelter: body.shelter ?? null,
       deadlineAt: body.deadlineAt ?? null,
       riskLevel: body.riskLevel ?? 'HIGH',
-      status: 'OPEN',
+      status: body.status ?? 'OPEN',
       location: body.location ?? null,
       notes: body.notes ?? '',
       media: body.media ?? [],

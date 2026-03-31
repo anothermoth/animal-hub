@@ -344,3 +344,38 @@ test('PATCH /cases/:id/status provides strict status transitions', async () => {
 
   await app.close();
 });
+
+test('POST /cases validates riskLevel/status/deadlineAt/location.state', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const ok = await app.inject({
+    method: 'POST',
+    url: '/cases',
+    payload: {
+      riskLevel: 'CODE_RED',
+      status: 'OPEN',
+      deadlineAt: new Date().toISOString(),
+      location: { state: 'TX' },
+    },
+  });
+  assert.equal(ok.statusCode, 201);
+
+  const badRisk = await app.inject({ method: 'POST', url: '/cases', payload: { riskLevel: 'NOPE' } });
+  assert.equal(badRisk.statusCode, 400);
+
+  const badStatus = await app.inject({ method: 'POST', url: '/cases', payload: { status: 'NOPE' } });
+  assert.equal(badStatus.statusCode, 400);
+
+  const badDeadline = await app.inject({ method: 'POST', url: '/cases', payload: { deadlineAt: 'not-a-date' } });
+  assert.equal(badDeadline.statusCode, 400);
+
+  const badState = await app.inject({ method: 'POST', url: '/cases', payload: { location: { state: 'TEX' } } });
+  assert.equal(badState.statusCode, 400);
+
+  // strict: unknown keys rejected
+  const extra = await app.inject({ method: 'POST', url: '/cases', payload: { nope: true } });
+  assert.equal(extra.statusCode, 400);
+
+  await app.close();
+});
