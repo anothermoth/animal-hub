@@ -52,6 +52,24 @@ The server exposes a websocket endpoint at `GET /ws` and emits JSON messages:
 - On connect: `{ "type": "hello", "ts": "..." }`
 - On updates: `{ "type": "event", "event": { ... } }`
 
+### Event shape
+
+All emitted events share a common envelope:
+
+```json
+{
+  "eventId": "<id>",
+  "seq": 123,
+  "kind": "CASE_CREATED",
+  "caseId": "<caseId>",
+  "ts": "2026-03-31T12:34:56.789Z",
+  "payload": {}
+}
+```
+
+- `seq` is monotonically increasing (useful for catch-up cursors)
+- `payload` is event-specific (case record, commitment record, status transition, etc.)
+
 To watch events without adding any deps, you can use a tiny Node one-liner:
 
 ```bash
