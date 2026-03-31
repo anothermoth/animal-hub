@@ -6,7 +6,8 @@
 import WebSocket from 'ws';
 
 const baseUrl = process.env.BASE_URL ?? 'http://localhost:3999';
-const wsUrl = baseUrl.replace(/^http/, 'ws') + '/ws';
+const wsKind = process.env.WS_KIND ? String(process.env.WS_KIND).trim() : null;
+const wsUrl = baseUrl.replace(/^http/, 'ws') + `/ws${wsKind ? `?kind=${encodeURIComponent(wsKind)}` : ''}`;
 
 let lastSeq = Number(process.env.AFTER_SEQ ?? 0);
 const cases = new Map();

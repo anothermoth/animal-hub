@@ -184,7 +184,10 @@ export function buildApp(opts = {}) {
     };
     events.push(enriched);
     const msg = JSON.stringify({ type: 'event', event: enriched });
-    for (const ws of subscribers) {
+    for (const sub of subscribers) {
+      const ws = sub?.ws ?? sub;
+      const kindSet = sub?.kindSet ?? null;
+      if (kindSet && !kindSet.has(enriched.kind)) continue;
       try {
         ws.send(msg);
       } catch {
@@ -336,9 +339,27 @@ export function buildApp(opts = {}) {
   });
 
   app.get('/ws', { websocket: true }, (connection) => {
-    subscribers.add(connection.socket);
+    // Optional filtering: /ws?kind=STATUS_CHANGED,CASE_CLAIMED
+    let kindSet = null;
+    try {
+      const q = connection.socket?.upgradeReq?.url
+        ? new URL(connection.socket.upgradeReq.url, 'http://localhost').searchParams
+        : null;
+      const kindRaw = q ? parseCsvSet(q.get('kind')) : null;
+      if (kindRaw) {
+        const kinds = Array.from(kindRaw);
+        const res = z.array(EventKind).safeParse(kinds);
+        if (res.success) kindSet = new Set(res.data);
+      }
+    } catch {
+      // ignore query parse failures
+    }
+
+    // Store { ws, kindSet } so we can filter on send.
+    const sub = { ws: connection.socket, kindSet };
+    subscribers.add(sub);
     connection.socket.send(JSON.stringify({ type: 'hello', ts: new Date().toISOString() }));
-    connection.socket.on('close', () => subscribers.delete(connection.socket));
+    connection.socket.on('close', () => subscribers.delete(sub));
   });
 
   app.post('/cases', async (req, reply) => {

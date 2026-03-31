@@ -127,6 +127,12 @@ To watch events without adding any deps, you can use a tiny Node one-liner:
 node -e "import WebSocket from 'ws'; const ws=new WebSocket('ws://localhost:3999/ws'); ws.on('message',m=>console.log(m.toString()));"
 ```
 
+You can also filter websocket events by kind (comma-separated), e.g.:
+
+```text
+/ws?kind=STATUS_CHANGED,CASE_CLAIMED
+```
+
 ### Reconnect strategy (recommended)
 
 Each event includes a monotonically increasing `seq`. A common pattern is:
