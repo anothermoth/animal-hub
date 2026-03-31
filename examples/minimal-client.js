@@ -12,6 +12,19 @@ let lastSeq = Number(process.env.AFTER_SEQ ?? 0);
 const cases = new Map();
 const commitments = new Map();
 
+function summarizeCase(caseId) {
+  const c = cases.get(caseId);
+  if (!c) return null;
+  let count = 0;
+  for (const com of commitments.values()) {
+    if (com.caseId === caseId) count++;
+  }
+  const deadline = c.deadlineAt ? ` deadline=${c.deadlineAt}` : '';
+  const risk = c.riskLevel ? ` risk=${c.riskLevel}` : '';
+  const status = c.status ? ` status=${c.status}` : '';
+  return `case ${caseId}${status}${risk}${deadline} commitments=${count}`;
+}
+
 function applyEvent(e) {
   if (!e || typeof e !== 'object') return;
   if (typeof e.seq === 'number') lastSeq = Math.max(lastSeq, e.seq);
@@ -49,6 +62,16 @@ async function main() {
         console.log(
           `event kind=${msg.event.kind} seq=${msg.event.seq} cases=${cases.size} commitments=${commitments.size}`,
         );
+
+        if (msg.event.kind === 'CASE_CREATED' || msg.event.kind === 'CASE_UPDATED') {
+          const line = summarizeCase(msg.event.caseId);
+          if (line) console.log(line);
+        }
+
+        if (msg.event.kind === 'COMMITMENT_CREATED' || msg.event.kind === 'COMMITMENT_UPDATED') {
+          const line = summarizeCase(msg.event.caseId);
+          if (line) console.log(line);
+        }
 
         if (msg.event.kind === 'STATUS_CHANGED') {
           const { from, to, by } = msg.event.payload ?? {};
