@@ -11,6 +11,40 @@ Real-time coordination hub for **shelters + rescues + transport + fosters** to m
 npm run dev
 ```
 
+## Quick start (curl)
+
+In one terminal:
+```bash
+PORT=3999 npm start
+```
+
+In another terminal:
+```bash
+# 1) Create a case
+CASE_ID=$(curl -sS -X POST localhost:3999/cases \
+  -H 'content-type: application/json' \
+  -d '{"name":"Buddy","riskLevel":"CODE_RED","location":{"city":"Austin","state":"TX"}}' \
+  | node -p 'JSON.parse(fs.readFileSync(0,"utf8")).caseId')
+
+# 2) Claim it (prevents double-claim during coordination)
+curl -sS -X POST localhost:3999/cases/$CASE_ID/claim \
+  -H 'content-type: application/json' \
+  -d '{"claimant":"rescue-demo"}' | cat
+
+# 3) Add a commitment
+curl -sS -X POST localhost:3999/cases/$CASE_ID/commitments \
+  -H 'content-type: application/json' \
+  -d '{"type":"TRANSPORT","party":{"name":"Taylor"},"status":"PENDING"}' | cat
+
+# 4) Update status (requires claimant if actively claimed)
+curl -sS -X PATCH localhost:3999/cases/$CASE_ID/status \
+  -H 'content-type: application/json' \
+  -d '{"status":"RESCUE_TAGGED","claimant":"rescue-demo"}' | cat
+
+# 5) Tail events for the case
+curl -sS "localhost:3999/cases/$CASE_ID/events?afterSeq=0&limit=200" | cat
+```
+
 ## API (current)
 
 ### Health
