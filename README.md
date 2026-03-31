@@ -58,6 +58,17 @@ To watch events without adding any deps, you can use a tiny Node one-liner:
 node -e "import WebSocket from 'ws'; const ws=new WebSocket('ws://localhost:3999/ws'); ws.on('message',m=>console.log(m.toString()));"
 ```
 
+### Reconnect strategy (recommended)
+
+Each event includes a monotonically increasing `seq`. A common pattern is:
+
+1) On startup, fetch backlog via HTTP:
+   - `GET /events?afterSeq=<lastSeenSeq>&limit=200`
+2) Connect to websocket `GET /ws` for live events.
+3) On disconnect, reconnect and catch up again with `afterSeq`.
+
+This gives you reliable catch-up without requiring the websocket to be perfectly durable.
+
 ## API (current)
 
 ### Health
