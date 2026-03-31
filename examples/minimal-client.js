@@ -25,9 +25,21 @@ const dashboardEveryMs =
   Number.isFinite(dashboardEverySec) && dashboardEverySec > 0 ? Math.floor(dashboardEverySec * 1000) : 0;
 const dashboardTopN = Math.max(1, Math.floor(Number(process.env.DASHBOARD_TOP_N ?? 5) || 5));
 
+const dashboardState = process.env.DASHBOARD_STATE ? String(process.env.DASHBOARD_STATE).trim().toUpperCase() : null;
+const dashboardRisk = process.env.DASHBOARD_RISK ? String(process.env.DASHBOARD_RISK).trim().toUpperCase() : null;
+
 function getCaseMetrics(caseId) {
   const c = cases.get(caseId);
   if (!c) return null;
+
+  if (dashboardState) {
+    const st = c.location?.state ? String(c.location.state).trim().toUpperCase() : null;
+    if (st !== dashboardState) return null;
+  }
+  if (dashboardRisk) {
+    const rl = c.riskLevel ? String(c.riskLevel).trim().toUpperCase() : null;
+    if (rl !== dashboardRisk) return null;
+  }
 
   const byType = new Map();
   const byTypeStatus = new Map();

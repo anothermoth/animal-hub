@@ -113,6 +113,9 @@ URGENCY_HOURS=2 BASE_URL=http://localhost:3999 node examples/minimal-client.js
 
 # Optionally print a periodic dashboard of top unmet-need cases
 DASHBOARD_EVERY_SEC=30 DASHBOARD_TOP_N=5 BASE_URL=http://localhost:3999 node examples/minimal-client.js
+
+# Optionally scope dashboard to a state and/or risk level
+DASHBOARD_STATE=TX DASHBOARD_RISK=CODE_RED DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
