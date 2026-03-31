@@ -207,3 +207,52 @@ test('GET /events returns a global event feed (optionally filtered by caseId)', 
 
   await app.close();
 });
+
+test('POST /cases/:id/claim prevents double-claim and supports release', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  const claim1 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/claim`,
+    payload: { claimant: 'rescue-A', ttlMs: 60_000 },
+  });
+  assert.equal(claim1.statusCode, 200);
+  assert.equal(claim1.json().claim.claimant, 'rescue-A');
+
+  const claim2 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/claim`,
+    payload: { claimant: 'rescue-B', ttlMs: 60_000 },
+  });
+  assert.equal(claim2.statusCode, 409);
+  assert.equal(claim2.json().error, 'already_claimed');
+
+  const releaseBad = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/release`,
+    payload: { claimant: 'rescue-B' },
+  });
+  assert.equal(releaseBad.statusCode, 409);
+
+  const releaseOk = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/release`,
+    payload: { claimant: 'rescue-A' },
+  });
+  assert.equal(releaseOk.statusCode, 200);
+  assert.equal(releaseOk.json().claim, null);
+
+  const claim3 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/claim`,
+    payload: { claimant: 'rescue-B', ttlMs: 60_000 },
+  });
+  assert.equal(claim3.statusCode, 200);
+  assert.equal(claim3.json().claim.claimant, 'rescue-B');
+
+  await app.close();
+});

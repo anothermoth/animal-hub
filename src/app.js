@@ -30,6 +30,19 @@ const PatchCommitmentBody = z
   })
   .strict();
 
+const ClaimCaseBody = z
+  .object({
+    claimant: z.string().min(1),
+    ttlMs: z.number().int().min(1000).max(1000 * 60 * 60).optional(),
+  })
+  .strict();
+
+const ReleaseClaimBody = z
+  .object({
+    claimant: z.string().min(1),
+  })
+  .strict();
+
 const ListCasesQuery = z
   .object({
     status: z.string().optional(), // comma-separated
@@ -312,6 +325,72 @@ export function buildApp(opts = {}) {
     cases.set(existing.caseId, updated);
     emitEvent({ kind: 'CASE_UPDATED', caseId: existing.caseId, ts: now, payload: updated });
     return updated;
+  });
+
+  // Minimal claim/lock semantics (roadmap item #2) to prevent double-claims.
+  // - Claim is stored on the case record as { claim: { claimant, claimedAt, expiresAt } }
+  // - Re-claim by same claimant refreshes TTL (idempotent-ish)
+  app.post('/cases/:id/claim', async (req, reply) => {
+    const existing = cases.get(req.params.id);
+    if (!existing) return reply.code(404).send({ error: 'not_found' });
+
+    const parsed = ClaimCaseBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
+
+    const { claimant, ttlMs } = parsed.data;
+    const nowMs = Date.now();
+    const now = new Date(nowMs).toISOString();
+    const ttl = ttlMs ?? 15 * 60 * 1000;
+
+    const claim = existing.claim ?? null;
+    const claimActive =
+      claim && typeof claim.expiresAt === 'string' && new Date(claim.expiresAt).getTime() > nowMs;
+
+    if (claimActive && claim.claimant !== claimant) {
+      return reply.code(409).send({
+        error: 'already_claimed',
+        claim,
+      });
+    }
+
+    const updated = {
+      ...existing,
+      claim: {
+        claimant,
+        claimedAt: claim?.claimedAt ?? now,
+        expiresAt: new Date(nowMs + ttl).toISOString(),
+      },
+      updatedAt: now,
+    };
+    cases.set(existing.caseId, updated);
+    emitEvent({ kind: 'CASE_CLAIMED', caseId: existing.caseId, ts: now, payload: updated.claim });
+    return reply.code(200).send(updated);
+  });
+
+  app.post('/cases/:id/release', async (req, reply) => {
+    const existing = cases.get(req.params.id);
+    if (!existing) return reply.code(404).send({ error: 'not_found' });
+
+    const parsed = ReleaseClaimBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
+
+    const { claimant } = parsed.data;
+    const now = new Date().toISOString();
+
+    const claim = existing.claim ?? null;
+    if (!claim) {
+      // idempotent release
+      return reply.code(200).send(existing);
+    }
+
+    if (claim.claimant !== claimant) {
+      return reply.code(409).send({ error: 'claimant_mismatch', claim });
+    }
+
+    const updated = { ...existing, claim: null, updatedAt: now };
+    cases.set(existing.caseId, updated);
+    emitEvent({ kind: 'CASE_RELEASED', caseId: existing.caseId, ts: now, payload: { claimant } });
+    return reply.code(200).send(updated);
   });
 
   app.post('/cases/:id/commitments', async (req, reply) => {
