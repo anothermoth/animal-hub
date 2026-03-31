@@ -45,6 +45,19 @@ curl -sS -X PATCH localhost:3999/cases/$CASE_ID/status \
 curl -sS "localhost:3999/cases/$CASE_ID/events?afterSeq=0&limit=200" | cat
 ```
 
+## Realtime (WebSocket)
+
+The server exposes a websocket endpoint at `GET /ws` and emits JSON messages:
+
+- On connect: `{ "type": "hello", "ts": "..." }`
+- On updates: `{ "type": "event", "event": { ... } }`
+
+To watch events without adding any deps, you can use a tiny Node one-liner:
+
+```bash
+node -e "import WebSocket from 'ws'; const ws=new WebSocket('ws://localhost:3999/ws'); ws.on('message',m=>console.log(m.toString()));"
+```
+
 ## API (current)
 
 ### Health
