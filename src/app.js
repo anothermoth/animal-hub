@@ -125,6 +125,13 @@ const ListCommitmentsQuery = z
   })
   .strict();
 
+const ListCaseCommitmentsQuery = z
+  .object({
+    limit: z.string().optional(),
+    offset: z.string().optional(),
+  })
+  .strict();
+
 function parseCsvSet(input) {
   if (!input) return null;
   const items = String(input)
@@ -404,7 +411,28 @@ export function buildApp(opts = {}) {
   app.get('/cases/:id/commitments', async (req, reply) => {
     const c = cases.get(req.params.id);
     if (!c) return reply.code(404).send({ error: 'case_not_found' });
-    return { items: listCommitmentsForCase(c.caseId) };
+
+    const parsed = ListCaseCommitmentsQuery.safeParse(req.query ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
+
+    let limit = 200;
+    if (parsed.data.limit != null) {
+      const n = Number(parsed.data.limit);
+      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
+      limit = Math.min(1000, Math.floor(n));
+    }
+
+    let offset = 0;
+    if (parsed.data.offset != null) {
+      const n = Number(parsed.data.offset);
+      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_offset' });
+      offset = Math.floor(n);
+    }
+
+    const all = listCommitmentsForCase(c.caseId);
+    const total = all.length;
+    const items = all.slice(offset, offset + limit);
+    return { items, total, offset, limit };
   });
 
   app.patch('/cases/:id', async (req, reply) => {

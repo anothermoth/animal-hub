@@ -138,6 +138,36 @@ test('GET /cases/:id/commitments lists commitments for a case', async () => {
   await app.close();
 });
 
+test('GET /cases/:id/commitments supports offset/limit pagination', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  for (let i = 0; i < 5; i++) {
+    await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER' } });
+  }
+
+  const page1 = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?limit=2&offset=0` });
+  assert.equal(page1.statusCode, 200);
+  const b1 = page1.json();
+  assert.equal(b1.items.length, 2);
+  assert.equal(b1.total, 5);
+
+  const page2 = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?limit=2&offset=2` });
+  assert.equal(page2.statusCode, 200);
+  assert.equal(page2.json().items.length, 2);
+
+  const badLimit = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?limit=0` });
+  assert.equal(badLimit.statusCode, 400);
+
+  const badOffset = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?offset=-1` });
+  assert.equal(badOffset.statusCode, 400);
+
+  await app.close();
+});
+
 test('GET /cases/:id/events returns an append-only event list for a case', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
