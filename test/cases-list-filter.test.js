@@ -256,3 +256,47 @@ test('POST /cases/:id/claim prevents double-claim and supports release', async (
 
   await app.close();
 });
+
+test('PATCH /cases/:id enforces claim for status changes and emits STATUS_CHANGED', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  // Claim by rescue-A
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/claim`, payload: { claimant: 'rescue-A', ttlMs: 60_000 } });
+
+  // Status change without claimant should be rejected
+  const denied = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { status: 'RESCUE_TAGGED' },
+  });
+  assert.equal(denied.statusCode, 409);
+  assert.equal(denied.json().error, 'claim_required');
+
+  // Status change with correct claimant succeeds
+  const ok = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { status: 'RESCUE_TAGGED', claimant: 'rescue-A' },
+  });
+  assert.equal(ok.statusCode, 200);
+  assert.equal(ok.json().status, 'RESCUE_TAGGED');
+
+  // Verify STATUS_CHANGED exists in events
+  const ev = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/events` });
+  const items = ev.json().items;
+  assert.ok(items.some((e) => e.kind === 'STATUS_CHANGED' && e.payload?.to === 'RESCUE_TAGGED'));
+
+  // Bad status enum rejected
+  const bad = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { status: 'NOT_A_STATUS', claimant: 'rescue-A' },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  await app.close();
+});

@@ -320,10 +320,43 @@ export function buildApp(opts = {}) {
   app.patch('/cases/:id', async (req, reply) => {
     const existing = cases.get(req.params.id);
     if (!existing) return reply.code(404).send({ error: 'not_found' });
-    const now = new Date().toISOString();
-    const updated = { ...existing, ...(req.body ?? {}), updatedAt: now };
+
+    const body = req.body ?? {};
+    const nowMs = Date.now();
+    const now = new Date(nowMs).toISOString();
+
+    // Optional claim enforcement for status transitions.
+    // If a request includes `status`, require either:
+    // - no active claim, OR
+    // - active claim held by body.claimant
+    if (Object.prototype.hasOwnProperty.call(body, 'status')) {
+      const parsed = CaseStatus.safeParse(body.status);
+      if (!parsed.success) return reply.code(400).send({ error: 'bad_body_status' });
+
+      const claim = existing.claim ?? null;
+      const claimActive =
+        claim && typeof claim.expiresAt === 'string' && new Date(claim.expiresAt).getTime() > nowMs;
+
+      if (claimActive) {
+        const claimant = body.claimant;
+        if (!claimant || claim.claimant !== claimant) {
+          return reply.code(409).send({ error: 'claim_required', claim });
+        }
+      }
+    }
+
+    const updated = { ...existing, ...body, updatedAt: now };
     cases.set(existing.caseId, updated);
     emitEvent({ kind: 'CASE_UPDATED', caseId: existing.caseId, ts: now, payload: updated });
+
+    if (Object.prototype.hasOwnProperty.call(body, 'status') && body.status !== existing.status) {
+      emitEvent({
+        kind: 'STATUS_CHANGED',
+        caseId: existing.caseId,
+        ts: now,
+        payload: { from: existing.status, to: body.status, by: body.claimant ?? null },
+      });
+    }
     return updated;
   });
 
