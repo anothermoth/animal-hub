@@ -563,5 +563,11 @@ export function buildApp(opts = {}) {
     return updated;
   });
 
+  app.get('/commitments/:id', async (req, reply) => {
+    const existing = commitments.get(req.params.id);
+    if (!existing) return reply.code(404).send({ error: 'not_found' });
+    return existing;
+  });
+
   return app;
 }

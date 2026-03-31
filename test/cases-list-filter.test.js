@@ -417,3 +417,26 @@ test('POST /cases/:id/commitments validates enums and rejects extra keys', async
 
   await app.close();
 });
+
+test('GET /commitments/:id fetches a commitment by id', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const com = (
+    await app.inject({
+      method: 'POST',
+      url: `/cases/${c.caseId}/commitments`,
+      payload: { type: 'FOSTER', party: { name: 'Sam' } },
+    })
+  ).json();
+
+  const fetched = await app.inject({ method: 'GET', url: `/commitments/${com.commitId}` });
+  assert.equal(fetched.statusCode, 200);
+  assert.equal(fetched.json().commitId, com.commitId);
+
+  const missing = await app.inject({ method: 'GET', url: '/commitments/nope' });
+  assert.equal(missing.statusCode, 404);
+
+  await app.close();
+});
