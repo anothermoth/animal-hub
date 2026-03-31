@@ -27,6 +27,14 @@ const dashboardTopN = Math.max(1, Math.floor(Number(process.env.DASHBOARD_TOP_N 
 
 const dashboardState = process.env.DASHBOARD_STATE ? String(process.env.DASHBOARD_STATE).trim().toUpperCase() : null;
 const dashboardRisk = process.env.DASHBOARD_RISK ? String(process.env.DASHBOARD_RISK).trim().toUpperCase() : null;
+const dashboardStatusSet = process.env.DASHBOARD_STATUS
+  ? new Set(
+      String(process.env.DASHBOARD_STATUS)
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+    )
+  : null;
 
 function getCaseMetrics(caseId) {
   const c = cases.get(caseId);
@@ -39,6 +47,10 @@ function getCaseMetrics(caseId) {
   if (dashboardRisk) {
     const rl = c.riskLevel ? String(c.riskLevel).trim().toUpperCase() : null;
     if (rl !== dashboardRisk) return null;
+  }
+  if (dashboardStatusSet) {
+    const st = c.status ? String(c.status).trim().toUpperCase() : null;
+    if (!dashboardStatusSet.has(st)) return null;
   }
 
   const byType = new Map();

@@ -116,6 +116,9 @@ DASHBOARD_EVERY_SEC=30 DASHBOARD_TOP_N=5 BASE_URL=http://localhost:3999 node exa
 
 # Optionally scope dashboard to a state and/or risk level
 DASHBOARD_STATE=TX DASHBOARD_RISK=CODE_RED DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examples/minimal-client.js
+
+# Optionally scope dashboard to case status values (comma-separated)
+DASHBOARD_STATUS=OPEN,HOLD_REQUESTED DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
