@@ -80,3 +80,33 @@ test('PATCH /commitments/:id updates a commitment and validates enums', async ()
 
   await app.close();
 });
+
+test('GET /cases/:id/commitments lists commitments for a case', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/commitments`,
+    payload: { type: 'FOSTER', party: { name: 'A' } },
+  });
+  await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/commitments`,
+    payload: { type: 'TRANSPORT', party: { name: 'B' } },
+  });
+
+  const listed = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments` });
+  assert.equal(listed.statusCode, 200);
+  const body = listed.json();
+  assert.equal(body.items.length, 2);
+  assert.equal(body.items[0].caseId, c.caseId);
+
+  const missing = await app.inject({ method: 'GET', url: '/cases/does-not-exist/commitments' });
+  assert.equal(missing.statusCode, 404);
+
+  await app.close();
+});

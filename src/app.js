@@ -59,6 +59,16 @@ export function buildApp(opts = {}) {
   const commitments = opts.commitments ?? new Map();
   const subscribers = new Set();
 
+  function listCommitmentsForCase(caseId) {
+    const items = [];
+    for (const rec of commitments.values()) {
+      if (rec.caseId === caseId) items.push(rec);
+    }
+    // stable ordering for clients/tests
+    items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    return items;
+  }
+
   function emitEvent(event) {
     const msg = JSON.stringify({ type: 'event', event });
     for (const ws of subscribers) {
@@ -154,6 +164,13 @@ export function buildApp(opts = {}) {
     const c = cases.get(req.params.id);
     if (!c) return reply.code(404).send({ error: 'not_found' });
     return c;
+  });
+
+  // Convenience endpoint for case detail views.
+  app.get('/cases/:id/commitments', async (req, reply) => {
+    const c = cases.get(req.params.id);
+    if (!c) return reply.code(404).send({ error: 'case_not_found' });
+    return { items: listCommitmentsForCase(c.caseId) };
   });
 
   app.patch('/cases/:id', async (req, reply) => {
