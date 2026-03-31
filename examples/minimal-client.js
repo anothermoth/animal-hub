@@ -46,7 +46,18 @@ function summarizeCase(caseId) {
   const breakdown = typeParts ? ` types=[${typeParts}]` : '';
   const breakdown2 = typeStatusParts ? ` typeStatus=[${typeStatusParts}]` : '';
 
-  return `case ${caseId}${status}${risk}${deadline} commitments=${count}${breakdown}${breakdown2}`;
+  // Simple "needs" heuristic for coordination.
+  // (Kept intentionally dumb for MVP: missing type, or no CONFIRMED for that type.)
+  const needs = [];
+  for (const t of ['RESCUE_PULL', 'TRANSPORT', 'FOSTER']) {
+    const totalForType = byType.get(t) ?? 0;
+    const confirmedForType = byTypeStatus.get(`${t}:CONFIRMED`) ?? 0;
+    if (totalForType === 0) needs.push(`NEEDS_${t}`);
+    else if (confirmedForType === 0) needs.push(`NEEDS_${t}_CONFIRMED`);
+  }
+  const needsPart = needs.length ? ` needs=[${needs.join(',')}]` : '';
+
+  return `case ${caseId}${status}${risk}${deadline} commitments=${count}${breakdown}${breakdown2}${needsPart}`;
 }
 
 function applyEvent(e) {
