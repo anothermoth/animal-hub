@@ -138,6 +138,13 @@ Each event includes a monotonically increasing `seq`. A common pattern is:
 
 This gives you reliable catch-up without requiring the websocket to be perfectly durable.
 
+### Event feed filtering
+
+Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter (comma-separated):
+
+- `GET /events?afterSeq=0&kind=STATUS_CHANGED,CASE_CLAIMED`
+- `GET /cases/:id/events?kind=COMMITMENT_UPDATED`
+
 ## API (current)
 
 ### Health
