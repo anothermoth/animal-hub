@@ -48,3 +48,35 @@ test('GET /cases rejects unknown risk/status values', async () => {
   await app.close();
 });
 
+test('PATCH /commitments/:id updates a commitment and validates enums', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  const commitment = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/commitments`,
+    payload: { type: 'FOSTER', status: 'PENDING', party: { name: 'Alex' } },
+  });
+  assert.equal(commitment.statusCode, 201);
+  const com = commitment.json();
+
+  const patched = await app.inject({
+    method: 'PATCH',
+    url: `/commitments/${com.commitId}`,
+    payload: { status: 'CONFIRMED' },
+  });
+  assert.equal(patched.statusCode, 200);
+  assert.equal(patched.json().status, 'CONFIRMED');
+
+  const bad = await app.inject({
+    method: 'PATCH',
+    url: `/commitments/${com.commitId}`,
+    payload: { status: 'NOPE' },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  await app.close();
+});

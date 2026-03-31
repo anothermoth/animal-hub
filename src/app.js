@@ -18,6 +18,18 @@ const CaseStatus = z.enum([
 
 const RiskLevel = z.enum(['LOW', 'MED', 'HIGH', 'CODE_RED']);
 
+const CommitmentType = z.enum(['FOSTER', 'ADOPT', 'TRANSPORT', 'RESCUE_PULL', 'DONATION']);
+const CommitmentStatus = z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'FULFILLED']);
+
+const PatchCommitmentBody = z
+  .object({
+    type: CommitmentType.optional(),
+    status: CommitmentStatus.optional(),
+    party: z.record(z.any()).optional(),
+    details: z.record(z.any()).optional(),
+  })
+  .strict();
+
 const ListCasesQuery = z
   .object({
     status: z.string().optional(), // comma-separated
@@ -175,6 +187,22 @@ export function buildApp(opts = {}) {
     return reply.code(201).send(rec);
   });
 
+  // Matches design-doc sketch: PATCH /commitments/:id
+  app.patch('/commitments/:id', async (req, reply) => {
+    const existing = commitments.get(req.params.id);
+    if (!existing) return reply.code(404).send({ error: 'not_found' });
+
+    const parsed = PatchCommitmentBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
+    }
+
+    const now = new Date().toISOString();
+    const updated = { ...existing, ...parsed.data, updatedAt: now };
+    commitments.set(existing.commitId, updated);
+    emitEvent({ kind: 'COMMITMENT_UPDATED', caseId: updated.caseId, ts: now, payload: updated });
+    return updated;
+  });
+
   return app;
 }
-
