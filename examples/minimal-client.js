@@ -15,14 +15,38 @@ const commitments = new Map();
 function summarizeCase(caseId) {
   const c = cases.get(caseId);
   if (!c) return null;
+
+  const byType = new Map();
+  const byTypeStatus = new Map();
   let count = 0;
   for (const com of commitments.values()) {
-    if (com.caseId === caseId) count++;
+    if (com.caseId !== caseId) continue;
+    count++;
+    const t = com.type ?? 'UNKNOWN';
+    const s = com.status ?? 'UNKNOWN';
+    byType.set(t, (byType.get(t) ?? 0) + 1);
+    const key = `${t}:${s}`;
+    byTypeStatus.set(key, (byTypeStatus.get(key) ?? 0) + 1);
   }
+
   const deadline = c.deadlineAt ? ` deadline=${c.deadlineAt}` : '';
   const risk = c.riskLevel ? ` risk=${c.riskLevel}` : '';
   const status = c.status ? ` status=${c.status}` : '';
-  return `case ${caseId}${status}${risk}${deadline} commitments=${count}`;
+
+  const typeParts = Array.from(byType.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([t, n]) => `${t}=${n}`)
+    .join(',');
+
+  const typeStatusParts = Array.from(byTypeStatus.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([k, n]) => `${k}=${n}`)
+    .join(',');
+
+  const breakdown = typeParts ? ` types=[${typeParts}]` : '';
+  const breakdown2 = typeStatusParts ? ` typeStatus=[${typeStatusParts}]` : '';
+
+  return `case ${caseId}${status}${risk}${deadline} commitments=${count}${breakdown}${breakdown2}`;
 }
 
 function applyEvent(e) {
