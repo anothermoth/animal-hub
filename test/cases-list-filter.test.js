@@ -144,3 +144,42 @@ test('GET /cases/:id/events returns an append-only event list for a case', async
 
   await app.close();
 });
+
+test('GET /cases/:id/events supports limit + afterSeq cursor', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = created.json();
+
+  // create a few events
+  await app.inject({ method: 'PATCH', url: `/cases/${c.caseId}`, payload: { notes: '1' } });
+  await app.inject({ method: 'PATCH', url: `/cases/${c.caseId}`, payload: { notes: '2' } });
+  await app.inject({ method: 'PATCH', url: `/cases/${c.caseId}`, payload: { notes: '3' } });
+
+  const first = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/events?limit=2&afterSeq=0` });
+  assert.equal(first.statusCode, 200);
+  const b1 = first.json();
+  assert.equal(b1.items.length, 2);
+  assert.ok(b1.nextAfterSeq != null);
+
+  const second = await app.inject({
+    method: 'GET',
+    url: `/cases/${c.caseId}/events?afterSeq=${encodeURIComponent(String(b1.nextAfterSeq))}&limit=100`,
+  });
+  assert.equal(second.statusCode, 200);
+  const b2 = second.json();
+  assert.ok(b2.items.length >= 1);
+  assert.ok(b2.items.every((e) => e.seq > b1.nextAfterSeq));
+
+  const badLimit = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/events?limit=0` });
+  assert.equal(badLimit.statusCode, 400);
+
+  const badSince = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/events?sinceTs=not-a-date` });
+  assert.equal(badSince.statusCode, 400);
+
+  const badAfterSeq = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/events?afterSeq=-1` });
+  assert.equal(badAfterSeq.statusCode, 400);
+
+  await app.close();
+});
