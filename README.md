@@ -11,6 +11,44 @@ Real-time coordination hub for **shelters + rescues + transport + fosters** to m
 npm run dev
 ```
 
+## API (current)
+
+### Health
+- `GET /healthz`
+
+### Cases
+- `POST /cases` (validated)
+- `GET /cases`
+  - filters: `status`, `risk`, `state`
+  - pagination: `limit`, `offset`
+  - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&limit=50&offset=0`
+- `GET /cases/:id`
+- `PATCH /cases/:id`
+  - if `status` is provided and the case is actively claimed, requires `claimant` to match the claim holder
+- `PATCH /cases/:id/status` (strict status transitions)
+
+### Commitments
+- `POST /cases/:id/commitments` (validated)
+- `GET /cases/:id/commitments` (pagination: `limit`, `offset`)
+- `GET /commitments/:id`
+- `GET /commitments`
+  - filters: `caseId`, `type`, `status` (type/status are comma-separated)
+  - pagination: `limit`, `offset`
+  - example: `/commitments?type=TRANSPORT&status=PENDING,CONFIRMED&limit=100&offset=0`
+- `PATCH /commitments/:id` (validated patch)
+
+### Claim/lock semantics (MVP)
+- `POST /cases/:id/claim` body: `{ claimant: "org-or-user-id", ttlMs?: number }`
+  - returns `409 already_claimed` if another claimant holds an active claim
+- `POST /cases/:id/release` body: `{ claimant: "org-or-user-id" }`
+
+### Events
+- WebSocket: `GET /ws`
+- HTTP feeds:
+  - `GET /events` (global)
+  - `GET /cases/:id/events` (per-case)
+  - cursor pagination: `afterSeq`, `sinceTs`, `limit`
+  - example: `/events?afterSeq=0&limit=200`
+
 ## Docs
 - See **docs/DESIGN.md** for the system design + roadmap.
-
