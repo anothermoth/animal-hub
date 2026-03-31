@@ -379,3 +379,41 @@ test('POST /cases validates riskLevel/status/deadlineAt/location.state', async (
 
   await app.close();
 });
+
+test('POST /cases/:id/commitments validates enums and rejects extra keys', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+
+  const ok = await app.inject({
+    method: 'POST',
+    url: `/cases/${created.caseId}/commitments`,
+    payload: { type: 'TRANSPORT', status: 'CONFIRMED', party: { name: 'Taylor' } },
+  });
+  assert.equal(ok.statusCode, 201);
+  assert.equal(ok.json().type, 'TRANSPORT');
+
+  const badType = await app.inject({
+    method: 'POST',
+    url: `/cases/${created.caseId}/commitments`,
+    payload: { type: 'NOPE' },
+  });
+  assert.equal(badType.statusCode, 400);
+
+  const badStatus = await app.inject({
+    method: 'POST',
+    url: `/cases/${created.caseId}/commitments`,
+    payload: { status: 'NOPE' },
+  });
+  assert.equal(badStatus.statusCode, 400);
+
+  const extra = await app.inject({
+    method: 'POST',
+    url: `/cases/${created.caseId}/commitments`,
+    payload: { type: 'FOSTER', nope: true },
+  });
+  assert.equal(extra.statusCode, 400);
+
+  await app.close();
+});

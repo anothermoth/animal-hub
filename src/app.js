@@ -30,6 +30,23 @@ const PatchCommitmentBody = z
   })
   .strict();
 
+const CreateCommitmentBody = z
+  .object({
+    type: CommitmentType.optional(),
+    status: CommitmentStatus.optional(),
+    party: z
+      .object({
+        name: z.string().min(1).optional(),
+        org: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    details: z.record(z.any()).optional(),
+  })
+  .strict();
+
 const ClaimCaseBody = z
   .object({
     claimant: z.string().min(1),
@@ -505,7 +522,13 @@ export function buildApp(opts = {}) {
   app.post('/cases/:id/commitments', async (req, reply) => {
     const c = cases.get(req.params.id);
     if (!c) return reply.code(404).send({ error: 'case_not_found' });
-    const body = req.body ?? {};
+
+    const parsed = CreateCommitmentBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
+    }
+
+    const body = parsed.data;
     const commitId = nanoid();
     const now = new Date().toISOString();
     const rec = {
