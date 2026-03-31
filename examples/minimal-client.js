@@ -20,7 +20,12 @@ const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPOR
 const urgencyHours = Number(process.env.URGENCY_HOURS ?? 2);
 const urgencyMs = Number.isFinite(urgencyHours) && urgencyHours > 0 ? urgencyHours * 60 * 60 * 1000 : 0;
 
-function summarizeCase(caseId) {
+const dashboardEverySec = Number(process.env.DASHBOARD_EVERY_SEC ?? 30);
+const dashboardEveryMs =
+  Number.isFinite(dashboardEverySec) && dashboardEverySec > 0 ? Math.floor(dashboardEverySec * 1000) : 0;
+const dashboardTopN = Math.max(1, Math.floor(Number(process.env.DASHBOARD_TOP_N ?? 5) || 5));
+
+function getCaseMetrics(caseId) {
   const c = cases.get(caseId);
   if (!c) return null;
 
@@ -37,6 +42,27 @@ function summarizeCase(caseId) {
     byTypeStatus.set(key, (byTypeStatus.get(key) ?? 0) + 1);
   }
 
+  const needs = [];
+  for (const t of requiredTypes) {
+    const totalForType = byType.get(t) ?? 0;
+    const confirmedForType = byTypeStatus.get(`${t}:CONFIRMED`) ?? 0;
+    if (totalForType === 0) needs.push(`NEEDS_${t}`);
+    else if (confirmedForType === 0) needs.push(`NEEDS_${t}_CONFIRMED`);
+  }
+
+  let deadlineDeltaMs = null;
+  if (c.deadlineAt) {
+    const t = new Date(c.deadlineAt).getTime();
+    if (!Number.isNaN(t)) deadlineDeltaMs = t - Date.now();
+  }
+
+  return { c, count, byType, byTypeStatus, needs, deadlineDeltaMs };
+}
+
+function summarizeCase(caseId) {
+  const m = getCaseMetrics(caseId);
+  if (!m) return null;
+  const { c, count, byType, byTypeStatus, needs, deadlineDeltaMs } = m;
   const deadline = c.deadlineAt ? ` deadline=${c.deadlineAt}` : '';
   const risk = c.riskLevel ? ` risk=${c.riskLevel}` : '';
   const status = c.status ? ` status=${c.status}` : '';
@@ -54,25 +80,12 @@ function summarizeCase(caseId) {
   const breakdown = typeParts ? ` types=[${typeParts}]` : '';
   const breakdown2 = typeStatusParts ? ` typeStatus=[${typeStatusParts}]` : '';
 
-  // Simple "needs" heuristic for coordination.
-  // missing required type, or no CONFIRMED for that type.
-  const needs = [];
-  for (const t of requiredTypes) {
-    const totalForType = byType.get(t) ?? 0;
-    const confirmedForType = byTypeStatus.get(`${t}:CONFIRMED`) ?? 0;
-    if (totalForType === 0) needs.push(`NEEDS_${t}`);
-    else if (confirmedForType === 0) needs.push(`NEEDS_${t}_CONFIRMED`);
-  }
   const needsPart = needs.length ? ` needs=[${needs.join(',')}]` : '';
 
   let urgencyPart = '';
-  if (urgencyMs > 0 && c.deadlineAt) {
-    const t = new Date(c.deadlineAt).getTime();
-    if (!Number.isNaN(t)) {
-      const dt = t - Date.now();
-      if (dt <= urgencyMs) urgencyPart = ' urgency=DUE_SOON';
-      if (dt <= 0) urgencyPart = ' urgency=OVERDUE';
-    }
+  if (urgencyMs > 0 && deadlineDeltaMs != null) {
+    if (deadlineDeltaMs <= urgencyMs) urgencyPart = ' urgency=DUE_SOON';
+    if (deadlineDeltaMs <= 0) urgencyPart = ' urgency=OVERDUE';
   }
 
   return `case ${caseId}${status}${risk}${deadline}${urgencyPart} commitments=${count}${breakdown}${breakdown2}${needsPart}`;
@@ -104,6 +117,28 @@ async function catchUp() {
 async function main() {
   await catchUp();
   console.log(`caught up: lastSeq=${lastSeq} cases=${cases.size} commitments=${commitments.size}`);
+
+  if (dashboardEveryMs > 0) {
+    setInterval(() => {
+      const rows = [];
+      for (const caseId of cases.keys()) {
+        const m = getCaseMetrics(caseId);
+        if (!m) continue;
+        if (!m.needs.length) continue;
+        // Sort: overdue/soonest deadlines first; null deadlines last.
+        const sortKey = m.deadlineDeltaMs == null ? Number.POSITIVE_INFINITY : m.deadlineDeltaMs;
+        rows.push({ caseId, sortKey });
+      }
+      rows.sort((a, b) => a.sortKey - b.sortKey);
+      const top = rows.slice(0, dashboardTopN);
+      if (!top.length) return;
+      console.log(`\n=== dashboard (top ${dashboardTopN} unmet needs) ===`);
+      for (const r of top) {
+        const line = summarizeCase(r.caseId);
+        if (line) console.log(line);
+      }
+    }, dashboardEveryMs).unref();
+  }
 
   const ws = new WebSocket(wsUrl);
   ws.on('open', () => console.log(`ws connected: ${wsUrl}`));
