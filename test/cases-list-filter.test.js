@@ -463,3 +463,52 @@ test('GET /commitments supports filtering by caseId', async () => {
 
   await app.close();
 });
+
+test('GET /commitments supports type/status filters (csv) and validates enums', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const c2 = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+
+  const a = (
+    await app.inject({
+      method: 'POST',
+      url: `/cases/${c.caseId}/commitments`,
+      payload: { type: 'TRANSPORT', status: 'PENDING' },
+    })
+  ).json();
+  const b = (
+    await app.inject({
+      method: 'POST',
+      url: `/cases/${c.caseId}/commitments`,
+      payload: { type: 'FOSTER', status: 'CONFIRMED' },
+    })
+  ).json();
+  await app.inject({
+    method: 'POST',
+    url: `/cases/${c2.caseId}/commitments`,
+    payload: { type: 'DONATION', status: 'PENDING' },
+  });
+
+  const onlyPending = await app.inject({ method: 'GET', url: '/commitments?status=PENDING' });
+  assert.equal(onlyPending.statusCode, 200);
+  assert.ok(onlyPending.json().items.every((x) => x.status === 'PENDING'));
+
+  const transportOrFoster = await app.inject({
+    method: 'GET',
+    url: '/commitments?type=TRANSPORT,FOSTER&status=PENDING,CONFIRMED',
+  });
+  assert.equal(transportOrFoster.statusCode, 200);
+  const items = transportOrFoster.json().items;
+  assert.ok(items.some((x) => x.commitId === a.commitId));
+  assert.ok(items.some((x) => x.commitId === b.commitId));
+
+  const badType = await app.inject({ method: 'GET', url: '/commitments?type=NOPE' });
+  assert.equal(badType.statusCode, 400);
+
+  const badStatus = await app.inject({ method: 'GET', url: '/commitments?status=NOPE' });
+  assert.equal(badStatus.statusCode, 400);
+
+  await app.close();
+});

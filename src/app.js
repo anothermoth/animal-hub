@@ -116,6 +116,8 @@ const ListEventsQuery = z
 const ListCommitmentsQuery = z
   .object({
     caseId: z.string().optional(),
+    type: z.string().optional(), // comma-separated
+    status: z.string().optional(), // comma-separated
   })
   .strict();
 
@@ -580,9 +582,30 @@ export function buildApp(opts = {}) {
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
 
     const caseId = parsed.data.caseId ? String(parsed.data.caseId) : null;
+    const typeSetRaw = parseCsvSet(parsed.data.type);
+    const statusSetRaw = parseCsvSet(parsed.data.status);
+
+    let typeSet = null;
+    if (typeSetRaw) {
+      const types = Array.from(typeSetRaw);
+      const res = z.array(CommitmentType).safeParse(types);
+      if (!res.success) return reply.code(400).send({ error: 'bad_query_type' });
+      typeSet = new Set(res.data);
+    }
+
+    let statusSet = null;
+    if (statusSetRaw) {
+      const statuses = Array.from(statusSetRaw);
+      const res = z.array(CommitmentStatus).safeParse(statuses);
+      if (!res.success) return reply.code(400).send({ error: 'bad_query_status' });
+      statusSet = new Set(res.data);
+    }
+
     const items = [];
     for (const rec of commitments.values()) {
       if (caseId && rec.caseId !== caseId) continue;
+      if (typeSet && !typeSet.has(rec.type)) continue;
+      if (statusSet && !statusSet.has(rec.status)) continue;
       items.push(rec);
     }
     items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
