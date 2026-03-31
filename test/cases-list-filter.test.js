@@ -265,6 +265,30 @@ test('GET /events returns a global event feed (optionally filtered by caseId)', 
   await app.close();
 });
 
+test('GET /events supports kind filtering (csv) and validates kinds', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/claim`, payload: { claimant: 'rescue-A', ttlMs: 60_000 } });
+  await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}/status`,
+    payload: { status: 'RESCUE_TAGGED', claimant: 'rescue-A' },
+  });
+
+  const onlyStatus = await app.inject({ method: 'GET', url: '/events?afterSeq=0&kind=STATUS_CHANGED' });
+  assert.equal(onlyStatus.statusCode, 200);
+  const items = onlyStatus.json().items;
+  assert.ok(items.length >= 1);
+  assert.ok(items.every((e) => e.kind === 'STATUS_CHANGED'));
+
+  const bad = await app.inject({ method: 'GET', url: '/events?kind=NOPE' });
+  assert.equal(bad.statusCode, 400);
+
+  await app.close();
+});
+
 test('POST /cases/:id/claim prevents double-claim and supports release', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

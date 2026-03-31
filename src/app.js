@@ -21,6 +21,16 @@ const RiskLevel = z.enum(['LOW', 'MED', 'HIGH', 'CODE_RED']);
 const CommitmentType = z.enum(['FOSTER', 'ADOPT', 'TRANSPORT', 'RESCUE_PULL', 'DONATION']);
 const CommitmentStatus = z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'FULFILLED']);
 
+const EventKind = z.enum([
+  'CASE_CREATED',
+  'CASE_UPDATED',
+  'STATUS_CHANGED',
+  'COMMITMENT_CREATED',
+  'COMMITMENT_UPDATED',
+  'CASE_CLAIMED',
+  'CASE_RELEASED',
+]);
+
 const PatchCommitmentBody = z
   .object({
     type: CommitmentType.optional(),
@@ -112,6 +122,7 @@ const ListEventsQuery = z
     sinceTs: z.string().optional(),
     afterSeq: z.string().optional(),
     caseId: z.string().optional(),
+    kind: z.string().optional(), // comma-separated
   })
   .strict();
 
@@ -218,12 +229,21 @@ export function buildApp(opts = {}) {
     }
 
     const caseId = q.caseId ? String(q.caseId) : null;
+    const kindSetRaw = parseCsvSet(q.kind);
+    let kindSet = null;
+    if (kindSetRaw) {
+      const kinds = Array.from(kindSetRaw);
+      const res = z.array(EventKind).safeParse(kinds);
+      if (!res.success) return reply.code(400).send({ error: 'bad_query_kind' });
+      kindSet = new Set(res.data);
+    }
 
     const items = [];
     if (afterSeq != null || since) {
       for (let i = 0; i < events.length; i++) {
         const e = events[i];
         if (caseId && e.caseId !== caseId) continue;
+        if (kindSet && !kindSet.has(e.kind)) continue;
         if (afterSeq != null && Number(e.seq ?? 0) <= afterSeq) continue;
         if (since && String(e.ts) <= since) continue;
         items.push(e);
@@ -233,6 +253,7 @@ export function buildApp(opts = {}) {
       for (let i = events.length - 1; i >= 0; i--) {
         const e = events[i];
         if (caseId && e.caseId !== caseId) continue;
+        if (kindSet && !kindSet.has(e.kind)) continue;
         items.push(e);
         if (items.length >= limit) break;
       }
@@ -268,6 +289,15 @@ export function buildApp(opts = {}) {
       afterSeq = Math.floor(n);
     }
 
+    const kindSetRaw = parseCsvSet(q.kind);
+    let kindSet = null;
+    if (kindSetRaw) {
+      const kinds = Array.from(kindSetRaw);
+      const res = z.array(EventKind).safeParse(kinds);
+      if (!res.success) return reply.code(400).send({ error: 'bad_query_kind' });
+      kindSet = new Set(res.data);
+    }
+
     let limit = 200;
     if (q.limit != null) {
       const n = Number(q.limit);
@@ -281,6 +311,7 @@ export function buildApp(opts = {}) {
       for (let i = 0; i < events.length; i++) {
         const e = events[i];
         if (e.caseId !== c.caseId) continue;
+        if (kindSet && !kindSet.has(e.kind)) continue;
         if (afterSeq != null && Number(e.seq ?? 0) <= afterSeq) continue;
         if (since && String(e.ts) <= since) continue;
         items.push(e);
@@ -291,6 +322,7 @@ export function buildApp(opts = {}) {
       for (let i = events.length - 1; i >= 0; i--) {
         const e = events[i];
         if (e.caseId !== c.caseId) continue;
+        if (kindSet && !kindSet.has(e.kind)) continue;
         items.push(e);
         if (items.length >= limit) break;
       }
