@@ -118,6 +118,8 @@ const ListCommitmentsQuery = z
     caseId: z.string().optional(),
     type: z.string().optional(), // comma-separated
     status: z.string().optional(), // comma-separated
+    limit: z.string().optional(),
+    offset: z.string().optional(),
   })
   .strict();
 
@@ -601,6 +603,20 @@ export function buildApp(opts = {}) {
       statusSet = new Set(res.data);
     }
 
+    let limit = 200;
+    if (parsed.data.limit != null) {
+      const n = Number(parsed.data.limit);
+      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
+      limit = Math.min(1000, Math.floor(n));
+    }
+
+    let offset = 0;
+    if (parsed.data.offset != null) {
+      const n = Number(parsed.data.offset);
+      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_offset' });
+      offset = Math.floor(n);
+    }
+
     const items = [];
     for (const rec of commitments.values()) {
       if (caseId && rec.caseId !== caseId) continue;
@@ -609,7 +625,10 @@ export function buildApp(opts = {}) {
       items.push(rec);
     }
     items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
-    return { items };
+
+    const total = items.length;
+    const paged = items.slice(offset, offset + limit);
+    return { items: paged, total, offset, limit };
   });
 
   return app;
