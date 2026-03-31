@@ -338,14 +338,13 @@ export function buildApp(opts = {}) {
     };
   });
 
-  app.get('/ws', { websocket: true }, (connection) => {
+  app.get('/ws', { websocket: true }, (socket, req) => {
     // Optional filtering: /ws?kind=STATUS_CHANGED,CASE_CLAIMED
     let kindSet = null;
     try {
-      const q = connection.socket?.upgradeReq?.url
-        ? new URL(connection.socket.upgradeReq.url, 'http://localhost').searchParams
-        : null;
-      const kindRaw = q ? parseCsvSet(q.get('kind')) : null;
+      const rawUrl = req?.raw?.url ?? req?.url;
+      const url = rawUrl ? new URL(rawUrl, 'http://localhost') : null;
+      const kindRaw = url ? parseCsvSet(url.searchParams.get('kind')) : null;
       if (kindRaw) {
         const kinds = Array.from(kindRaw);
         const res = z.array(EventKind).safeParse(kinds);
@@ -355,11 +354,17 @@ export function buildApp(opts = {}) {
       // ignore query parse failures
     }
 
+    const ws = socket?.send ? socket : socket?.socket;
+    if (!ws || typeof ws.send !== 'function') {
+      // Should never happen, but don't 500 the upgrade if it does.
+      return;
+    }
+
     // Store { ws, kindSet } so we can filter on send.
-    const sub = { ws: connection.socket, kindSet };
+    const sub = { ws, kindSet };
     subscribers.add(sub);
-    connection.socket.send(JSON.stringify({ type: 'hello', ts: new Date().toISOString() }));
-    connection.socket.on('close', () => subscribers.delete(sub));
+    ws.send(JSON.stringify({ type: 'hello', ts: new Date().toISOString() }));
+    ws.on('close', () => subscribers.delete(sub));
   });
 
   app.post('/cases', async (req, reply) => {
