@@ -82,6 +82,16 @@ The server currently emits these `kind` values:
 - `CASE_CLAIMED` — `payload`: `{ claimant, claimedAt, expiresAt }`
 - `CASE_RELEASED` — `payload`: `{ claimant }`
 
+### Client state model (suggested)
+
+If you’re building a client that maintains local state:
+
+- Treat `CASE_UPDATED` and `COMMITMENT_UPDATED` as **authoritative snapshots** of the object.
+  - Apply by upserting the record by id (`caseId` / `commitId`).
+- Treat `STATUS_CHANGED` as a **high-signal transition** suitable for notifications/banners.
+  - You can also update your local case status from it, but `CASE_UPDATED` should be the source of truth.
+- On reconnect, catch up using `afterSeq` (see above), then resume websocket listening.
+
 To watch events without adding any deps, you can use a tiny Node one-liner:
 
 ```bash
