@@ -202,6 +202,54 @@ test('GET /cases/:id/commitments lists commitments for a case', async () => {
   await app.close();
 });
 
+test('GET /commitments/:id supports ETag / 304 Not Modified', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const com = (
+    await app.inject({
+      method: 'POST',
+      url: `/cases/${c.caseId}/commitments`,
+      payload: { type: 'FOSTER', party: { name: 'Sam' } },
+    })
+  ).json();
+
+  const first = await app.inject({ method: 'GET', url: `/commitments/${com.commitId}` });
+  assert.equal(first.statusCode, 200);
+  assert.ok(first.headers.etag);
+
+  const notModified = await app.inject({
+    method: 'GET',
+    url: `/commitments/${com.commitId}`,
+    headers: { 'if-none-match': first.headers.etag },
+  });
+  assert.equal(notModified.statusCode, 304);
+
+  await app.close();
+});
+
+test('GET /cases/:id/commitments supports ETag / 304 Not Modified', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER' } });
+
+  const first = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments` });
+  assert.equal(first.statusCode, 200);
+  assert.ok(first.headers.etag);
+
+  const notModified = await app.inject({
+    method: 'GET',
+    url: `/cases/${c.caseId}/commitments`,
+    headers: { 'if-none-match': first.headers.etag },
+  });
+  assert.equal(notModified.statusCode, 304);
+
+  await app.close();
+});
+
 test('GET /cases/:id/commitments supports offset/limit pagination', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

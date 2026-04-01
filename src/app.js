@@ -540,7 +540,11 @@ export function buildApp(opts = {}) {
     const all = listCommitmentsForCase(c.caseId);
     const total = all.length;
     const items = all.slice(offset, offset + limit);
-    return { items, total, offset, limit };
+
+    const payload = { items, total, offset, limit };
+    const etag = setMetaCacheHeaders(reply, payload);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return payload;
   });
 
   app.patch('/cases/:id', async (req, reply) => {
@@ -734,6 +738,9 @@ export function buildApp(opts = {}) {
   app.get('/commitments/:id', async (req, reply) => {
     const existing = commitments.get(req.params.id);
     if (!existing) return reply.code(404).send({ error: 'not_found' });
+
+    const etag = setMetaCacheHeaders(reply, existing);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return existing;
   });
 
