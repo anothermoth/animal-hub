@@ -279,6 +279,18 @@ Typical client loop:
 
 The response also includes a convenience `next` field (a relative URL) you can request next to continue polling with updated cursors.
 
+Example (poll with `next`):
+
+```bash
+# First poll
+R1=$(curl -sS 'localhost:3999/events?afterSeq=0&limit=5')
+echo "$R1" | cat
+
+# Follow the server-provided next URL
+NEXT=$(echo "$R1" | node -p 'JSON.parse(fs.readFileSync(0,"utf8")).next')
+curl -sS "localhost:3999$NEXT" | cat
+```
+
 ### Event feed filtering
 
 Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter (comma-separated):
