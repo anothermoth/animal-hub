@@ -31,6 +31,8 @@ const EventKind = z.enum([
   'CASE_RELEASED',
 ]);
 
+const EVENT_KINDS = EventKind.options;
+
 const PatchCommitmentBody = z
   .object({
     type: CommitmentType.optional(),
@@ -202,6 +204,8 @@ export function buildApp(opts = {}) {
   app.register(websocket);
 
   app.get('/healthz', async () => ({ ok: true }));
+
+  app.get('/meta/event-kinds', async () => ({ items: EVENT_KINDS }));
 
   // Global event stream (useful for dashboards / "what changed" views).
   // Supports the same cursors as /cases/:id/events.

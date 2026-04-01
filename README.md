@@ -143,6 +143,10 @@ COMMITMENT_CREATED, COMMITMENT_UPDATED,
 CASE_CLAIMED, CASE_RELEASED
 ```
 
+You can also fetch the supported list via HTTP:
+
+- `GET /meta/event-kinds`
+
 ### Reconnect strategy (recommended)
 
 Each event includes a monotonically increasing `seq`. A common pattern is:

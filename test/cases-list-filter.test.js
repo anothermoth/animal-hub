@@ -75,6 +75,19 @@ test('GET /cases rejects unknown risk/status values', async () => {
   await app.close();
 });
 
+test('GET /meta/event-kinds returns supported kinds', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const res = await app.inject({ method: 'GET', url: '/meta/event-kinds' });
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.ok(Array.isArray(body.items));
+  assert.ok(body.items.includes('STATUS_CHANGED'));
+
+  await app.close();
+});
+
 test('PATCH /commitments/:id updates a commitment and validates enums', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
