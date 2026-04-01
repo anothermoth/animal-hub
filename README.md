@@ -166,6 +166,8 @@ curl -i localhost:3999/meta/event-kinds -H "If-None-Match: $ETAG2"
 
 # To assert status code in scripts:
 curl -s -o /dev/null -w "%{http_code}\n" localhost:3999/meta/enums -H "If-None-Match: $ETAG"
+
+Tip: use `curl -I` / `HEAD` requests (as above) to fetch headers (like ETag) without downloading the response body.
 ```
 
 ### Reconnect strategy (recommended)
