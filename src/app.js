@@ -183,6 +183,7 @@ const ListCommitmentsQuery = z
 
 const ListCaseCommitmentsQuery = z
   .object({
+    q: z.string().optional(),
     limit: z.string().optional(),
     offset: z.string().optional(),
   })
@@ -717,7 +718,26 @@ export function buildApp(opts = {}) {
     if (lo.error) return reply.code(400).send({ error: lo.error });
     const { limit, offset } = lo;
 
-    const all = listCommitmentsForCase(c.caseId);
+    const query = parsed.data.q ? String(parsed.data.q).trim().toLowerCase() : null;
+
+    let all = listCommitmentsForCase(c.caseId);
+    if (query) {
+      all = all.filter((rec) => {
+        const fields = [
+          rec.commitId,
+          rec.type,
+          rec.status,
+          rec.party?.name,
+          rec.party?.org,
+          rec.party?.email,
+          rec.party?.phone,
+        ]
+          .filter((v) => typeof v === 'string' && v.trim().length)
+          .map((v) => v.trim().toLowerCase());
+        return fields.join(' | ').includes(query);
+      });
+    }
+
     const total = all.length;
     const items = all.slice(offset, offset + limit);
 

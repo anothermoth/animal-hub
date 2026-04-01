@@ -421,6 +421,33 @@ test('GET /cases/:id/commitments supports offset/limit pagination', async () => 
   await app.close();
 });
 
+test('GET /cases/:id/commitments supports q= free-text filtering', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const a = (
+    await app.inject({
+      method: 'POST',
+      url: `/cases/${c.caseId}/commitments`,
+      payload: { type: 'TRANSPORT', party: { name: 'Taylor' } },
+    })
+  ).json();
+  await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/commitments`,
+    payload: { type: 'FOSTER', party: { name: 'Other' } },
+  });
+
+  const res = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?q=tay` });
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].commitId, a.commitId);
+
+  await app.close();
+});
+
 test('GET /cases/:id/events returns an append-only event list for a case', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
