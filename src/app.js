@@ -255,6 +255,19 @@ function parseAfterSeqSinceTsLimit(q, { defaultLimit = 200, maxLimit = 1000 } = 
   return { since, afterSeq, limit };
 }
 
+function buildNextEventsUrl(req, nextAfterSeq, nextSinceTs) {
+  try {
+    const rawUrl = req?.raw?.url ?? req?.url;
+    const url = rawUrl ? new URL(rawUrl, 'http://localhost') : new URL('http://localhost/events');
+    url.searchParams.set('afterSeq', String(nextAfterSeq ?? 0));
+    if (nextSinceTs) url.searchParams.set('sinceTs', String(nextSinceTs));
+    // Keep other existing query params (kind, caseId, limit, etc.).
+    return url.pathname + url.search;
+  } catch {
+    return null;
+  }
+}
+
 export function buildApp(opts = {}) {
   const app = Fastify({ logger: true, ...opts.fastify });
 
@@ -407,10 +420,13 @@ export function buildApp(opts = {}) {
       items.reverse();
     }
 
+    const nextSinceTs = items.length ? items[items.length - 1].ts : since;
+    const nextAfterSeq = items.length ? items[items.length - 1].seq : afterSeq;
     return {
       items,
-      nextSinceTs: items.length ? items[items.length - 1].ts : since,
-      nextAfterSeq: items.length ? items[items.length - 1].seq : afterSeq,
+      nextSinceTs,
+      nextAfterSeq,
+      next: buildNextEventsUrl(req, nextAfterSeq, nextSinceTs),
     };
   });
 
@@ -455,10 +471,13 @@ export function buildApp(opts = {}) {
       }
       items.reverse();
     }
+    const nextSinceTs = items.length ? items[items.length - 1].ts : since;
+    const nextAfterSeq = items.length ? items[items.length - 1].seq : afterSeq;
     return {
       items,
-      nextSinceTs: items.length ? items[items.length - 1].ts : since,
-      nextAfterSeq: items.length ? items[items.length - 1].seq : afterSeq,
+      nextSinceTs,
+      nextAfterSeq,
+      next: buildNextEventsUrl(req, nextAfterSeq, nextSinceTs),
     };
   });
 

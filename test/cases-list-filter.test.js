@@ -435,6 +435,7 @@ test('GET /cases/:id/events returns an append-only event list for a case', async
   assert.equal(ev.statusCode, 200);
   assert.equal(ev.headers['cache-control'], 'no-store');
   const body = ev.json();
+  assert.ok(body.next);
 
   // CASE_CREATED + COMMITMENT_CREATED + CASE_UPDATED
   assert.ok(body.items.length >= 3);
@@ -500,6 +501,7 @@ test('GET /events returns a global event feed (optionally filtered by caseId)', 
   assert.equal(all.headers['cache-control'], 'no-store');
   const a = all.json();
   assert.ok(a.items.length >= 4);
+  assert.ok(a.next);
 
   const onlyC1 = await app.inject({ method: 'GET', url: `/events?limit=50&afterSeq=0&caseId=${c1.caseId}` });
   assert.equal(onlyC1.statusCode, 200);
