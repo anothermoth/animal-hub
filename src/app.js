@@ -425,12 +425,16 @@ export function buildApp(opts = {}) {
   app.register(cors, { origin: true });
   app.register(websocket);
 
-  app.get('/healthz', async () => ({
-    ok: true,
-    version: metaVersion,
-    ts: new Date().toISOString(),
-    uptimeSec: Math.floor((Date.now() - startedAtMs) / 1000),
-  }));
+  app.get('/healthz', async (req, reply) => {
+    // Health checks should not be cached by intermediaries.
+    reply.header('cache-control', 'no-store');
+    return {
+      ok: true,
+      version: metaVersion,
+      ts: new Date().toISOString(),
+      uptimeSec: Math.floor((Date.now() - startedAtMs) / 1000),
+    };
+  });
 
   app.get('/meta/enums', async (req, reply) => {
     const payload = { enums: ENUMS, version: metaVersion };

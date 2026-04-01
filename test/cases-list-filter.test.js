@@ -303,6 +303,7 @@ test('GET /healthz returns ok + version + uptime', async () => {
 
   const res = await app.inject({ method: 'GET', url: '/healthz' });
   assert.equal(res.statusCode, 200);
+  assert.equal(res.headers['cache-control'], 'no-store');
   const body = res.json();
   assert.equal(body.ok, true);
   assert.ok(Object.prototype.hasOwnProperty.call(body, 'version'));
