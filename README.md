@@ -148,6 +148,12 @@ SILENT_EVENTS=1 DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examp
 # For an even quieter mode (no per-case summaries either; dashboard only)
 SILENT_EVENTS=1 SILENT_SUMMARIES=1 DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
+
+You can also print the dashboard immediately when the top-N set changes:
+
+```bash
+DASHBOARD_ON_CHANGE=1 SILENT_EVENTS=1 SILENT_SUMMARIES=1 BASE_URL=http://localhost:3999 node examples/minimal-client.js
+```
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:

@@ -84,6 +84,10 @@ const dashboardEverySec = Number(process.env.DASHBOARD_EVERY_SEC ?? 30);
 const dashboardEveryMs =
   Number.isFinite(dashboardEverySec) && dashboardEverySec > 0 ? Math.floor(dashboardEverySec * 1000) : 0;
 const dashboardTopN = Math.max(1, Math.floor(Number(process.env.DASHBOARD_TOP_N ?? 5) || 5));
+const dashboardOnChange = process.env.DASHBOARD_ON_CHANGE === '1' || process.env.DASHBOARD_ON_CHANGE === 'true';
+
+let lastDashboardKey = null;
+let dashboardScheduled = false;
 
 const dashboardState = process.env.DASHBOARD_STATE ? String(process.env.DASHBOARD_STATE).trim().toUpperCase() : null;
 const dashboardRisk = process.env.DASHBOARD_RISK ? String(process.env.DASHBOARD_RISK).trim().toUpperCase() : null;
@@ -175,6 +179,43 @@ function summarizeCase(caseId) {
   return `case ${caseId}${status}${risk}${deadline}${urgencyPart} commitments=${count}${breakdown}${breakdown2}${needsPart}`;
 }
 
+function computeDashboardTop() {
+  const rows = [];
+  for (const caseId of cases.keys()) {
+    const m = getCaseMetrics(caseId);
+    if (!m) continue;
+    if (!m.needs.length) continue;
+    const sortKey = m.deadlineDeltaMs == null ? Number.POSITIVE_INFINITY : m.deadlineDeltaMs;
+    rows.push({ caseId, sortKey });
+  }
+  rows.sort((a, b) => a.sortKey - b.sortKey);
+  return rows.slice(0, dashboardTopN).map((r) => r.caseId);
+}
+
+function printDashboard(caseIds) {
+  if (!caseIds.length) return;
+  console.log(`\n=== dashboard (top ${dashboardTopN} unmet needs) ===`);
+  for (const caseId of caseIds) {
+    const line = summarizeCase(caseId);
+    if (line) console.log(line);
+  }
+}
+
+function scheduleDashboardIfChanged() {
+  if (!dashboardOnChange) return;
+  if (dashboardScheduled) return;
+  dashboardScheduled = true;
+  setTimeout(() => {
+    dashboardScheduled = false;
+    const top = computeDashboardTop();
+    const key = top.join(',');
+    if (key !== lastDashboardKey) {
+      lastDashboardKey = key;
+      printDashboard(top);
+    }
+  }, 50).unref();
+}
+
 function applyEvent(e) {
   if (!e || typeof e !== 'object') return;
   if (typeof e.seq === 'number') {
@@ -186,11 +227,13 @@ function applyEvent(e) {
   if (e.kind === 'CASE_CREATED' || e.kind === 'CASE_UPDATED') {
     const rec = e.payload;
     if (rec?.caseId) cases.set(rec.caseId, rec);
+    scheduleDashboardIfChanged();
   }
 
   if (e.kind === 'COMMITMENT_CREATED' || e.kind === 'COMMITMENT_UPDATED') {
     const rec = e.payload;
     if (rec?.commitId) commitments.set(rec.commitId, rec);
+    scheduleDashboardIfChanged();
   }
 }
 
@@ -208,23 +251,8 @@ async function main() {
 
   if (dashboardEveryMs > 0) {
     setInterval(() => {
-      const rows = [];
-      for (const caseId of cases.keys()) {
-        const m = getCaseMetrics(caseId);
-        if (!m) continue;
-        if (!m.needs.length) continue;
-        // Sort: overdue/soonest deadlines first; null deadlines last.
-        const sortKey = m.deadlineDeltaMs == null ? Number.POSITIVE_INFINITY : m.deadlineDeltaMs;
-        rows.push({ caseId, sortKey });
-      }
-      rows.sort((a, b) => a.sortKey - b.sortKey);
-      const top = rows.slice(0, dashboardTopN);
-      if (!top.length) return;
-      console.log(`\n=== dashboard (top ${dashboardTopN} unmet needs) ===`);
-      for (const r of top) {
-        const line = summarizeCase(r.caseId);
-        if (line) console.log(line);
-      }
+      const top = computeDashboardTop();
+      printDashboard(top);
     }, dashboardEveryMs).unref();
   }
 
