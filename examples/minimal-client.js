@@ -278,7 +278,8 @@ async function main() {
     `caught up: lastSeq=${lastSeq} cases=${cases.size} commitments=${commitments.size} ` +
       `mode=${process.env.MODE ?? 'none'} wsKind=${wsKind ?? 'none'} ` +
       `silentEvents=${silentEvents} silentSummaries=${silentSummaries} ` +
-      `dashboardEverySec=${dashboardEverySec} dashboardOnChange=${dashboardOnChange}`,
+      `dashboardEverySec=${dashboardEverySec} dashboardOnChange=${dashboardOnChange} ` +
+      `stateFile=${stateFile ?? 'none'} stateFlushMs=${stateFlushMs}`,
   );
 
   if (dashboardEveryMs > 0) {
