@@ -22,6 +22,7 @@ In another terminal:
 ```bash
 # 1) Create a case
 CASE_ID=$(curl -sS -X POST localhost:3999/cases \
+  -H 'idempotency-key: demo-create-case-1' \
   -H 'content-type: application/json' \
   -d '{"name":"Buddy","riskLevel":"CODE_RED","location":{"city":"Austin","state":"TX"}}' \
   | node -p 'JSON.parse(fs.readFileSync(0,"utf8")).caseId')
@@ -33,6 +34,7 @@ curl -sS -X POST localhost:3999/cases/$CASE_ID/claim \
 
 # 3) Add a commitment
 curl -sS -X POST localhost:3999/cases/$CASE_ID/commitments \
+  -H 'idempotency-key: demo-create-commitment-1' \
   -H 'content-type: application/json' \
   -d '{"type":"TRANSPORT","party":{"name":"Taylor"},"status":"PENDING"}' | cat
 
@@ -268,6 +270,19 @@ Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter
 - `GET /cases/:id/events?kind=COMMITMENT_UPDATED`
 
 ## API (current)
+
+### Retry safety (Idempotency-Key)
+
+Create endpoints support an optional `Idempotency-Key` request header.
+
+- `POST /cases`
+- `POST /cases/:id/commitments` (key is scoped per-case)
+
+If a client retries the same request with the same key (e.g. due to a timeout), the server will return the originally-created object instead of creating a duplicate.
+
+Notes:
+- This is **best-effort** in the single-node MVP (in-memory, bounded cache).
+- In Phase 2 (Postgres), this should be backed by durable storage.
 
 ### Health
 - `GET /healthz`
