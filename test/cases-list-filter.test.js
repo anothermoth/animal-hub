@@ -560,6 +560,57 @@ test('POST /cases/:id/claim prevents double-claim and supports release', async (
   await app.close();
 });
 
+test('POST /cases/:id/claim and /release support Idempotency-Key (no duplicate events)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+
+  const claim1 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/claim`,
+    headers: { 'idempotency-key': 'claim-1' },
+    payload: { claimant: 'rescue-A', ttlMs: 60_000 },
+  });
+  assert.equal(claim1.statusCode, 200);
+
+  const claim2 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/claim`,
+    headers: { 'idempotency-key': 'claim-1' },
+    payload: { claimant: 'rescue-A', ttlMs: 60_000 },
+  });
+  assert.equal(claim2.statusCode, 200);
+
+  const ev1 = await app.inject({ method: 'GET', url: `/events?afterSeq=0&kind=CASE_CLAIMED&caseId=${c.caseId}&limit=50` });
+  assert.equal(ev1.statusCode, 200);
+  const claimed = ev1.json().items.filter((e) => e.kind === 'CASE_CLAIMED' && e.caseId === c.caseId);
+  assert.equal(claimed.length, 1);
+
+  const rel1 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/release`,
+    headers: { 'idempotency-key': 'release-1' },
+    payload: { claimant: 'rescue-A' },
+  });
+  assert.equal(rel1.statusCode, 200);
+
+  const rel2 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/release`,
+    headers: { 'idempotency-key': 'release-1' },
+    payload: { claimant: 'rescue-A' },
+  });
+  assert.equal(rel2.statusCode, 200);
+
+  const ev2 = await app.inject({ method: 'GET', url: `/events?afterSeq=0&kind=CASE_RELEASED&caseId=${c.caseId}&limit=50` });
+  assert.equal(ev2.statusCode, 200);
+  const released = ev2.json().items.filter((e) => e.kind === 'CASE_RELEASED' && e.caseId === c.caseId);
+  assert.equal(released.length, 1);
+
+  await app.close();
+});
+
 test('PATCH /cases/:id enforces claim for status changes and emits STATUS_CHANGED', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

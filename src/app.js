@@ -741,6 +741,17 @@ export function buildApp(opts = {}) {
     const existing = cases.get(req.params.id);
     if (!existing) return reply.code(404).send({ error: 'not_found' });
 
+    // Best-effort idempotency: allow clients to retry a claim request without creating
+    // duplicate CASE_CLAIMED events.
+    const idemKey = getIdempotencyKey(req);
+    const claimIdemKey = idemKey ? `${existing.caseId}:claim:${idemKey}` : null;
+    if (claimIdemKey && idempotency.commitments.has(claimIdemKey)) {
+      const existingId = idempotency.commitments.get(claimIdemKey);
+      const rec = existingId ? cases.get(existingId) : null;
+      // We store caseId here; if present, return current case snapshot.
+      if (rec) return reply.code(200).send(rec);
+    }
+
     const parsed = ClaimCaseBody.safeParse(req.body ?? {});
     if (!parsed.success) return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
 
@@ -770,6 +781,8 @@ export function buildApp(opts = {}) {
       updatedAt: now,
     };
     cases.set(existing.caseId, updated);
+    // reuse the bounded idempotency store (commitments map) to avoid new structure
+    if (claimIdemKey) rememberIdempotency('commitment', claimIdemKey, existing.caseId);
     emitEvent({ kind: 'CASE_CLAIMED', caseId: existing.caseId, ts: now, payload: updated.claim });
     return reply.code(200).send(updated);
   });
@@ -777,6 +790,14 @@ export function buildApp(opts = {}) {
   app.post('/cases/:id/release', async (req, reply) => {
     const existing = cases.get(req.params.id);
     if (!existing) return reply.code(404).send({ error: 'not_found' });
+
+    const idemKey = getIdempotencyKey(req);
+    const releaseIdemKey = idemKey ? `${existing.caseId}:release:${idemKey}` : null;
+    if (releaseIdemKey && idempotency.commitments.has(releaseIdemKey)) {
+      const existingId = idempotency.commitments.get(releaseIdemKey);
+      const rec = existingId ? cases.get(existingId) : null;
+      if (rec) return reply.code(200).send(rec);
+    }
 
     const parsed = ReleaseClaimBody.safeParse(req.body ?? {});
     if (!parsed.success) return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
@@ -796,6 +817,7 @@ export function buildApp(opts = {}) {
 
     const updated = { ...existing, claim: null, updatedAt: now };
     cases.set(existing.caseId, updated);
+    if (releaseIdemKey) rememberIdempotency('commitment', releaseIdemKey, existing.caseId);
     emitEvent({ kind: 'CASE_RELEASED', caseId: existing.caseId, ts: now, payload: { claimant } });
     return reply.code(200).send(updated);
   });
