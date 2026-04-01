@@ -135,6 +135,14 @@ You can also filter websocket events by kind (comma-separated), e.g.:
 
 If `kind` contains unknown values, the server will close the connection with code `1008` (policy violation).
 
+Valid kinds currently include:
+
+```text
+CASE_CREATED, CASE_UPDATED, STATUS_CHANGED,
+COMMITMENT_CREATED, COMMITMENT_UPDATED,
+CASE_CLAIMED, CASE_RELEASED
+```
+
 ### Reconnect strategy (recommended)
 
 Each event includes a monotonically increasing `seq`. A common pattern is:
