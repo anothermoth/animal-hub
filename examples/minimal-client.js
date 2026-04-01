@@ -65,6 +65,10 @@ if (stateFile && stateFlushMs === 0) {
   console.warn('warning: STATE_FLUSH_MS=0 will write STATE_FILE on every event (may be heavy under bursty traffic)');
 }
 
+if (dashboardEveryMs > 0 && dashboardEveryMs < 5000) {
+  console.warn('warning: DASHBOARD_EVERY_SEC is very low; may spam logs under bursty traffic');
+}
+
 const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPORT,FOSTER')
   .split(',')
   .map((s) => s.trim())
