@@ -38,6 +38,10 @@ const stateFlushMs = Math.max(0, Math.floor(Number(process.env.STATE_FLUSH_MS ??
 let pendingFlush = false;
 function schedulePersist() {
   if (!stateFile) return;
+  if (stateFlushMs === 0) {
+    persistState();
+    return;
+  }
   if (pendingFlush) return;
   pendingFlush = true;
   setTimeout(() => {

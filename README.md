@@ -136,6 +136,8 @@ STATE_FILE=.client-state.json BASE_URL=http://localhost:3999 node examples/minim
 
 By default, the client flushes `STATE_FILE` at most once per second; you can override with `STATE_FLUSH_MS`.
 
+- Set `STATE_FLUSH_MS=0` to flush on every event (more durable, more disk writes).
+
 The client also flushes state on `SIGINT` / `SIGTERM` (Ctrl+C / shutdown) to reduce cursor loss.
 ```
 
