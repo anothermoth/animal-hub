@@ -300,6 +300,7 @@ Notes:
   - pagination: `limit`, `offset`
   - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&sort=deadlineAt:asc&limit=50&offset=0`
 - `GET /cases/:id`
+  - optional: `include=commitments` to return `{ case, commitments }` in one request
 - `PATCH /cases/:id`
   - if `status` is provided and the case is actively claimed, requires `claimant` to match the claim holder
 - `PATCH /cases/:id/status` (strict status transitions)
