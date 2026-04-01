@@ -3,6 +3,7 @@ import websocket from '@fastify/websocket';
 import cors from '@fastify/cors';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import crypto from 'node:crypto';
 
 const CaseStatus = z.enum([
   'OPEN',
@@ -171,6 +172,12 @@ export function buildApp(opts = {}) {
     process.env.GIT_SHA ??
     null;
 
+  function setMetaCacheHeaders(reply, payloadObj) {
+    reply.header('cache-control', 'public, max-age=60');
+    const etag = crypto.createHash('sha256').update(JSON.stringify(payloadObj)).digest('hex');
+    reply.header('etag', `\"${etag}\"`);
+  }
+
   /**
    * MVP storage: in-memory.
    * Replace with Postgres + event store in Phase 2.
@@ -219,13 +226,15 @@ export function buildApp(opts = {}) {
   app.get('/healthz', async () => ({ ok: true }));
 
   app.get('/meta/enums', async (_req, reply) => {
-    reply.header('cache-control', 'public, max-age=60');
-    return { enums: ENUMS, version: metaVersion };
+    const payload = { enums: ENUMS, version: metaVersion };
+    setMetaCacheHeaders(reply, payload);
+    return payload;
   });
 
   app.get('/meta/event-kinds', async (_req, reply) => {
-    reply.header('cache-control', 'public, max-age=60');
-    return { items: EVENT_KINDS, version: metaVersion };
+    const payload = { items: EVENT_KINDS, version: metaVersion };
+    setMetaCacheHeaders(reply, payload);
+    return payload;
   });
 
   // Global event stream (useful for dashboards / "what changed" views).
