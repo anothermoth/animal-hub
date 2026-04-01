@@ -277,6 +277,8 @@ Typical client loop:
 3) Update `lastSeq` to `nextAfterSeq` from the response
 4) Repeat, or switch to websocket for live updates
 
+The response also includes a convenience `next` field (a relative URL) you can request next to continue polling with updated cursors.
+
 ### Event feed filtering
 
 Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter (comma-separated):
