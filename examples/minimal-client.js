@@ -19,11 +19,18 @@ const commitments = new Map();
   const mode = process.env.MODE ? String(process.env.MODE).trim().toLowerCase() : null;
   const env = process.env;
   const has = (name) => env[name] != null && String(env[name]).length > 0;
-  if (mode === 'ops') {
+if (mode === 'ops') {
     if (!has('SILENT_EVENTS')) process.env.SILENT_EVENTS = '1';
     if (!has('SILENT_SUMMARIES')) process.env.SILENT_SUMMARIES = '1';
     if (!has('DASHBOARD_ON_CHANGE')) process.env.DASHBOARD_ON_CHANGE = '1';
     if (!has('DASHBOARD_EVERY_SEC')) process.env.DASHBOARD_EVERY_SEC = '300';
+  }
+  if (mode === 'signal') {
+    if (!has('SILENT_EVENTS')) process.env.SILENT_EVENTS = '1';
+    if (!has('SILENT_SUMMARIES')) process.env.SILENT_SUMMARIES = '1';
+    if (!has('WS_KIND')) process.env.WS_KIND = 'STATUS_CHANGED,CASE_CLAIMED';
+    if (!has('DASHBOARD_EVERY_SEC')) process.env.DASHBOARD_EVERY_SEC = '0';
+    if (!has('DASHBOARD_ON_CHANGE')) process.env.DASHBOARD_ON_CHANGE = '0';
   }
 }
 

@@ -166,6 +166,12 @@ Shortcut (equivalent preset):
 ```bash
 MODE=ops BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
+
+Signal-only preset (high-signal websocket kinds, minimal output):
+
+```bash
+MODE=signal BASE_URL=http://localhost:3999 node examples/minimal-client.js
+```
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
