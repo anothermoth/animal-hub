@@ -309,6 +309,7 @@ Notes:
 ### Health
 - `GET /healthz`
   - optional: `include=counts` to include `{ cases, commitments, events }` counts (dev/ops)
+- `HEAD /healthz` (supported; same headers, empty body)
 
 ### Cases
 - `POST /cases` (validated)
