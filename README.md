@@ -155,6 +155,13 @@ Both endpoints also return a `version` field (best-effort; may be `null`) to hel
 
 They also support conditional GET via `ETag` / `If-None-Match` (returns `304 Not Modified` on a match).
 
+Example:
+
+```bash
+ETAG=$(curl -sSI localhost:3999/meta/enums | awk -F': ' 'tolower($1)=="etag"{gsub(/\r/,"",$2); print $2}')
+curl -i localhost:3999/meta/enums -H "If-None-Match: $ETAG"
+```
+
 ### Reconnect strategy (recommended)
 
 Each event includes a monotonically increasing `seq`. A common pattern is:
