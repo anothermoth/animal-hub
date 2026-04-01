@@ -212,9 +212,15 @@ export function buildApp(opts = {}) {
 
   app.get('/healthz', async () => ({ ok: true }));
 
-  app.get('/meta/event-kinds', async () => ({ items: EVENT_KINDS }));
+  app.get('/meta/enums', async (_req, reply) => {
+    reply.header('cache-control', 'public, max-age=60');
+    return { enums: ENUMS };
+  });
 
-  app.get('/meta/enums', async () => ({ enums: ENUMS }));
+  app.get('/meta/event-kinds', async (_req, reply) => {
+    reply.header('cache-control', 'public, max-age=60');
+    return { items: EVENT_KINDS };
+  });
 
   // Global event stream (useful for dashboards / "what changed" views).
   // Supports the same cursors as /cases/:id/events.
