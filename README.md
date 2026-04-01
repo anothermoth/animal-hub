@@ -313,6 +313,7 @@ Notes:
 - `POST /cases` (validated)
 - `GET /cases`
   - filters: `status`, `risk`, `state`, `q`
+    - `q` supports multiple terms (split on whitespace, AND semantics)
   - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `deadlineAt:asc`, `deadlineAt:desc`, `risk:desc`)
   - pagination: `limit`, `offset` (response includes `nextOffset` and `next`)
   - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&sort=deadlineAt:asc&limit=50&offset=0`
@@ -325,9 +326,11 @@ Notes:
 ### Commitments
 - `POST /cases/:id/commitments` (validated)
 - `GET /cases/:id/commitments` (filters: `q`; pagination: `limit`, `offset` — response includes `nextOffset` and `next`)
+  - `q` supports multiple terms (split on whitespace, AND semantics)
 - `GET /commitments/:id`
 - `GET /commitments`
   - filters: `caseId`, `type`, `status` (type/status are comma-separated), `q`
+    - `q` supports multiple terms (split on whitespace, AND semantics)
   - pagination: `limit`, `offset` (response includes `nextOffset` and `next`)
   - example: `/commitments?type=TRANSPORT&status=PENDING,CONFIRMED&limit=100&offset=0`
 - `PATCH /commitments/:id` (validated patch)
