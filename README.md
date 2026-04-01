@@ -127,6 +127,12 @@ Notes:
 - `AFTER_SEQ` controls the initial HTTP catch-up cursor.
 - `WS_KIND` controls which live websocket event kinds you receive.
 - In a real deployment, persist the last seen `seq` and restart with `AFTER_SEQ=<lastSeenSeq>`.
+
+Tip: you can persist `lastSeq` automatically with `STATE_FILE`:
+
+```bash
+STATE_FILE=.client-state.json BASE_URL=http://localhost:3999 node examples/minimal-client.js
+```
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:

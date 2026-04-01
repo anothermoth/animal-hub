@@ -4,6 +4,7 @@
 // - Maintain an in-memory case map
 
 import WebSocket from 'ws';
+import fs from 'node:fs';
 
 const baseUrl = process.env.BASE_URL ?? 'http://localhost:3999';
 const wsKind = process.env.WS_KIND ? String(process.env.WS_KIND).trim() : null;
@@ -12,6 +13,26 @@ const wsUrl = baseUrl.replace(/^http/, 'ws') + `/ws${wsKind ? `?kind=${encodeURI
 let lastSeq = Number(process.env.AFTER_SEQ ?? 0);
 const cases = new Map();
 const commitments = new Map();
+
+const stateFile = process.env.STATE_FILE ? String(process.env.STATE_FILE) : null;
+if (stateFile) {
+  try {
+    const raw = fs.readFileSync(stateFile, 'utf8');
+    const st = JSON.parse(raw);
+    if (typeof st.lastSeq === 'number') lastSeq = Math.max(lastSeq, st.lastSeq);
+  } catch {
+    // ignore
+  }
+}
+
+function persistState() {
+  if (!stateFile) return;
+  try {
+    fs.writeFileSync(stateFile, JSON.stringify({ lastSeq }, null, 2));
+  } catch {
+    // ignore
+  }
+}
 
 const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPORT,FOSTER')
   .split(',')
@@ -118,7 +139,11 @@ function summarizeCase(caseId) {
 
 function applyEvent(e) {
   if (!e || typeof e !== 'object') return;
-  if (typeof e.seq === 'number') lastSeq = Math.max(lastSeq, e.seq);
+  if (typeof e.seq === 'number') {
+    const prev = lastSeq;
+    lastSeq = Math.max(lastSeq, e.seq);
+    if (lastSeq !== prev) persistState();
+  }
 
   if (e.kind === 'CASE_CREATED' || e.kind === 'CASE_UPDATED') {
     const rec = e.payload;
