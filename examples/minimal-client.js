@@ -61,6 +61,10 @@ function flushAndExit(code = 0) {
 process.on('SIGINT', () => flushAndExit(0));
 process.on('SIGTERM', () => flushAndExit(0));
 
+if (stateFile && stateFlushMs === 0) {
+  console.warn('warning: STATE_FLUSH_MS=0 will write STATE_FILE on every event (may be heavy under bursty traffic)');
+}
+
 const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPORT,FOSTER')
   .split(',')
   .map((s) => s.trim())
