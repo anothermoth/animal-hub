@@ -291,8 +291,9 @@ Notes:
 - `POST /cases` (validated)
 - `GET /cases`
   - filters: `status`, `risk`, `state`
+  - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `deadlineAt:asc`, `deadlineAt:desc`, `risk:desc`)
   - pagination: `limit`, `offset`
-  - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&limit=50&offset=0`
+  - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&sort=deadlineAt:asc&limit=50&offset=0`
 - `GET /cases/:id`
 - `PATCH /cases/:id`
   - if `status` is provided and the case is actively claimed, requires `claimant` to match the claim holder
