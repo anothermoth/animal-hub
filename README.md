@@ -405,6 +405,14 @@ curl -sS "localhost:3999$NEXT" | cat
 
 Example catch-up + subscribe (filtering to high-signal kinds):
 
+Minimal Node websocket client example:
+
+- `docs/examples/ws-client.mjs`
+
+```bash
+HUB_URL=http://localhost:3999 node docs/examples/ws-client.mjs
+```
+
 ### Triage cookbook (examples)
 
 - Most recently updated high-risk cases:
