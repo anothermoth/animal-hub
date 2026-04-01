@@ -262,6 +262,21 @@ Each event includes a monotonically increasing `seq`. A common pattern is:
 
 This gives you reliable catch-up without requiring the websocket to be perfectly durable.
 
+### Cursor params (afterSeq / sinceTs)
+
+Event feed endpoints (`GET /events` and `GET /cases/:id/events`) support cursor-style polling:
+
+- `afterSeq=<n>`: fetch events with `seq > n` (recommended; monotonic and unambiguous)
+- `sinceTs=<iso>`: fetch events with `ts > sinceTs` (useful if you don’t have a stored seq)
+- `limit=<n>`: max number of items to return (server caps this)
+
+Typical client loop:
+
+1) Start with a persisted `lastSeq` (or `0`)
+2) Poll: `GET /events?afterSeq=<lastSeq>&limit=200`
+3) Update `lastSeq` to `nextAfterSeq` from the response
+4) Repeat, or switch to websocket for live updates
+
 ### Event feed filtering
 
 Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter (comma-separated):
