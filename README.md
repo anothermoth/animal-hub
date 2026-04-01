@@ -314,7 +314,7 @@ Notes:
 - `GET /cases`
   - filters: `status`, `risk`, `state`, `q`
     - `q` supports multiple terms (split on whitespace, AND semantics)
-  - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `deadlineAt:asc`, `deadlineAt:desc`, `risk:desc`)
+  - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `updatedAt:asc`, `updatedAt:desc`, `deadlineAt:asc`, `deadlineAt:desc`, `risk:desc`)
   - pagination: `limit`, `offset` (response includes `nextOffset` and `next`)
   - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&sort=deadlineAt:asc&limit=50&offset=0`
 - `GET /cases/:id`
