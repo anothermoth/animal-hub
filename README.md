@@ -311,6 +311,14 @@ Notes:
   - optional: `include=counts` to include `{ cases, commitments, events }` counts (dev/ops)
 - `HEAD /healthz` (supported; same headers, empty body)
 
+Example:
+
+```bash
+curl -sS localhost:3999/healthz | cat
+curl -sS localhost:3999/healthz?include=counts | cat
+curl -I localhost:3999/healthz
+```
+
 ### Cases
 - `POST /cases` (validated)
 - `GET /cases`
