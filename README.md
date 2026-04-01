@@ -405,6 +405,15 @@ curl -sS "localhost:3999$NEXT" | cat
 
 Example catch-up + subscribe (filtering to high-signal kinds):
 
+### Triage cookbook (examples)
+
+- Most recently updated high-risk cases:
+  - `/cases?risk=CODE_RED&sort=updatedAt:desc&limit=50&offset=0`
+- Search by external id or name (multi-term AND search):
+  - `/cases?q=A%23123 buddy&sort=deadlineAt:asc&limit=50&offset=0`
+- Find commitments by volunteer/org name:
+  - `/commitments?q=taylor transport&sort=updatedAt:desc&limit=50&offset=0`
+
 ```bash
 # catch up via HTTP
 curl -sS "localhost:3999/events?afterSeq=0&limit=200&kind=STATUS_CHANGED,CASE_CLAIMED" | cat
