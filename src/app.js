@@ -203,6 +203,15 @@ function parseCsvSet(input) {
   return new Set(items);
 }
 
+function parseCsvEnumSet(raw, enumSchema) {
+  const setRaw = parseCsvSet(raw);
+  if (!setRaw) return null;
+  const items = Array.from(setRaw);
+  const res = z.array(enumSchema).safeParse(items);
+  if (!res.success) return { error: true };
+  return new Set(res.data);
+}
+
 export function buildApp(opts = {}) {
   const app = Fastify({ logger: true, ...opts.fastify });
 
@@ -346,14 +355,9 @@ export function buildApp(opts = {}) {
     }
 
     const caseId = q.caseId ? String(q.caseId) : null;
-    const kindSetRaw = parseCsvSet(q.kind);
-    let kindSet = null;
-    if (kindSetRaw) {
-      const kinds = Array.from(kindSetRaw);
-      const res = z.array(EventKind).safeParse(kinds);
-      if (!res.success) return reply.code(400).send({ error: 'bad_query_kind' });
-      kindSet = new Set(res.data);
-    }
+    const kindSetParsed = parseCsvEnumSet(q.kind, EventKind);
+    if (kindSetParsed?.error) return reply.code(400).send({ error: 'bad_query_kind' });
+    const kindSet = kindSetParsed;
 
     const items = [];
     if (afterSeq != null || since) {
@@ -408,14 +412,9 @@ export function buildApp(opts = {}) {
       afterSeq = Math.floor(n);
     }
 
-    const kindSetRaw = parseCsvSet(q.kind);
-    let kindSet = null;
-    if (kindSetRaw) {
-      const kinds = Array.from(kindSetRaw);
-      const res = z.array(EventKind).safeParse(kinds);
-      if (!res.success) return reply.code(400).send({ error: 'bad_query_kind' });
-      kindSet = new Set(res.data);
-    }
+    const kindSetParsed = parseCsvEnumSet(q.kind, EventKind);
+    if (kindSetParsed?.error) return reply.code(400).send({ error: 'bad_query_kind' });
+    const kindSet = kindSetParsed;
 
     let limit = 200;
     if (q.limit != null) {
@@ -539,25 +538,13 @@ export function buildApp(opts = {}) {
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
 
     const q = parsed.data;
-    const statusSetRaw = parseCsvSet(q.status);
-    const riskSetRaw = parseCsvSet(q.risk);
+    const statusSetParsed = parseCsvEnumSet(q.status, CaseStatus);
+    if (statusSetParsed?.error) return reply.code(400).send({ error: 'bad_query_status' });
+    const statusSet = statusSetParsed;
 
-    // Validate enums (but keep it permissive: ignore unknown values by failing fast).
-    let statusSet = null;
-    if (statusSetRaw) {
-      const statuses = Array.from(statusSetRaw);
-      const res = z.array(CaseStatus).safeParse(statuses);
-      if (!res.success) return reply.code(400).send({ error: 'bad_query_status' });
-      statusSet = new Set(res.data);
-    }
-
-    let riskSet = null;
-    if (riskSetRaw) {
-      const risks = Array.from(riskSetRaw);
-      const res = z.array(RiskLevel).safeParse(risks);
-      if (!res.success) return reply.code(400).send({ error: 'bad_query_risk' });
-      riskSet = new Set(res.data);
-    }
+    const riskSetParsed = parseCsvEnumSet(q.risk, RiskLevel);
+    if (riskSetParsed?.error) return reply.code(400).send({ error: 'bad_query_risk' });
+    const riskSet = riskSetParsed;
 
     const state = q.state ? String(q.state).trim().toUpperCase() : null;
     const query = q.q ? String(q.q).trim().toLowerCase() : null;
@@ -960,24 +947,13 @@ export function buildApp(opts = {}) {
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
 
     const caseId = parsed.data.caseId ? String(parsed.data.caseId) : null;
-    const typeSetRaw = parseCsvSet(parsed.data.type);
-    const statusSetRaw = parseCsvSet(parsed.data.status);
+    const typeSetParsed = parseCsvEnumSet(parsed.data.type, CommitmentType);
+    if (typeSetParsed?.error) return reply.code(400).send({ error: 'bad_query_type' });
+    const typeSet = typeSetParsed;
 
-    let typeSet = null;
-    if (typeSetRaw) {
-      const types = Array.from(typeSetRaw);
-      const res = z.array(CommitmentType).safeParse(types);
-      if (!res.success) return reply.code(400).send({ error: 'bad_query_type' });
-      typeSet = new Set(res.data);
-    }
-
-    let statusSet = null;
-    if (statusSetRaw) {
-      const statuses = Array.from(statusSetRaw);
-      const res = z.array(CommitmentStatus).safeParse(statuses);
-      if (!res.success) return reply.code(400).send({ error: 'bad_query_status' });
-      statusSet = new Set(res.data);
-    }
+    const statusSetParsed = parseCsvEnumSet(parsed.data.status, CommitmentStatus);
+    if (statusSetParsed?.error) return reply.code(400).send({ error: 'bad_query_status' });
+    const statusSet = statusSetParsed;
 
     let limit = 200;
     if (parsed.data.limit != null) {
