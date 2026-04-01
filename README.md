@@ -324,7 +324,7 @@ Notes:
 
 ### Commitments
 - `POST /cases/:id/commitments` (validated)
-- `GET /cases/:id/commitments` (pagination: `limit`, `offset` — response includes `nextOffset` and `next`)
+- `GET /cases/:id/commitments` (filters: `q`; pagination: `limit`, `offset` — response includes `nextOffset` and `next`)
 - `GET /commitments/:id`
 - `GET /commitments`
   - filters: `caseId`, `type`, `status` (type/status are comma-separated), `q`
