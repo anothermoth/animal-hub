@@ -337,6 +337,18 @@ test('GET /healthz supports include=counts', async () => {
   await app.close();
 });
 
+test('HEAD /healthz returns 200 + no-store', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const res = await app.inject({ method: 'HEAD', url: '/healthz' });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.headers['cache-control'], 'no-store');
+  assert.equal(res.body, '');
+
+  await app.close();
+});
+
 test('GET /meta/enums returns enum lists for clients', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

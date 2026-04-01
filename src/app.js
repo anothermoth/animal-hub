@@ -457,6 +457,7 @@ export function buildApp(opts = {}) {
     };
   });
 
+
   app.get('/meta/enums', async (req, reply) => {
     const payload = { enums: ENUMS, version: metaVersion };
     const etag = setMetaCacheHeaders(reply, payload);
