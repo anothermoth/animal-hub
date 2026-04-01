@@ -230,6 +230,16 @@ Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter
     - cursor pagination: `afterSeq`, `sinceTs`, `limit`
     - filter: `kind` (csv)
 
+Example catch-up + subscribe (filtering to high-signal kinds):
+
+```bash
+# catch up via HTTP
+curl -sS "localhost:3999/events?afterSeq=0&limit=200&kind=STATUS_CHANGED,CASE_CLAIMED" | cat
+
+# subscribe via websocket
+node -e "import WebSocket from 'ws'; const ws=new WebSocket('ws://localhost:3999/ws?kind=STATUS_CHANGED,CASE_CLAIMED'); ws.on('message',m=>console.log(m.toString()));"
+```
+
 ### Meta
 - `GET /meta/event-kinds` (supports `HEAD`, `ETag`, `If-None-Match` -> 304)
 - `GET /meta/enums` (supports `HEAD`, `ETag`, `If-None-Match` -> 304)
