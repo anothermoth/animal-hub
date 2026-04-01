@@ -135,6 +135,8 @@ STATE_FILE=.client-state.json BASE_URL=http://localhost:3999 node examples/minim
 ```
 
 By default, the client flushes `STATE_FILE` at most once per second; you can override with `STATE_FLUSH_MS`.
+
+The client also flushes state on `SIGINT` / `SIGTERM` (Ctrl+C / shutdown) to reduce cursor loss.
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
