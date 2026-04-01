@@ -602,7 +602,11 @@ export function buildApp(opts = {}) {
     }
     const total = items.length;
     const paged = items.slice(offset, offset + limit);
-    return { items: paged, total, offset, limit };
+
+    const payload = { items: paged, total, offset, limit };
+    const etag = setMetaCacheHeaders(reply, payload);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return payload;
   });
 
   app.get('/cases/:id', async (req, reply) => {
@@ -902,7 +906,11 @@ export function buildApp(opts = {}) {
 
     const total = items.length;
     const paged = items.slice(offset, offset + limit);
-    return { items: paged, total, offset, limit };
+
+    const payload = { items: paged, total, offset, limit };
+    const etag = setMetaCacheHeaders(reply, payload);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return payload;
   });
 
   return app;

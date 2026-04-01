@@ -62,6 +62,27 @@ test('GET /cases supports offset/limit pagination', async () => {
   await app.close();
 });
 
+test('GET /cases supports ETag / 304 Not Modified for list responses', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  await app.inject({ method: 'POST', url: '/cases', payload: { name: 'a' } });
+  await app.inject({ method: 'POST', url: '/cases', payload: { name: 'b' } });
+
+  const first = await app.inject({ method: 'GET', url: '/cases?limit=10&offset=0&sort=createdAt:asc' });
+  assert.equal(first.statusCode, 200);
+  assert.ok(first.headers.etag);
+
+  const notModified = await app.inject({
+    method: 'GET',
+    url: '/cases?limit=10&offset=0&sort=createdAt:asc',
+    headers: { 'if-none-match': first.headers.etag },
+  });
+  assert.equal(notModified.statusCode, 304);
+
+  await app.close();
+});
+
 test('GET /cases/:id supports ETag / 304 Not Modified', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
@@ -886,6 +907,28 @@ test('GET /commitments supports offset/limit pagination', async () => {
 
   const badOffset = await app.inject({ method: 'GET', url: '/commitments?offset=-1' });
   assert.equal(badOffset.statusCode, 400);
+
+  await app.close();
+});
+
+test('GET /commitments supports ETag / 304 Not Modified for list responses', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER' } });
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'TRANSPORT' } });
+
+  const first = await app.inject({ method: 'GET', url: '/commitments?limit=10&offset=0' });
+  assert.equal(first.statusCode, 200);
+  assert.ok(first.headers.etag);
+
+  const notModified = await app.inject({
+    method: 'GET',
+    url: '/commitments?limit=10&offset=0',
+    headers: { 'if-none-match': first.headers.etag },
+  });
+  assert.equal(notModified.statusCode, 304);
 
   await app.close();
 });
