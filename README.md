@@ -167,6 +167,8 @@ Shortcut (equivalent preset):
 MODE=ops BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
 
+The client prints a startup line showing the *effective* settings (after applying any `MODE=*` preset), so you can verify it’s running with the options you expect.
+
 Signal-only preset (high-signal websocket kinds, minimal output):
 
 ```bash
