@@ -15,6 +15,7 @@ const cases = new Map();
 const commitments = new Map();
 
 const silentEvents = process.env.SILENT_EVENTS === '1' || process.env.SILENT_EVENTS === 'true';
+const silentSummaries = process.env.SILENT_SUMMARIES === '1' || process.env.SILENT_SUMMARIES === 'true';
 
 const stateFile = process.env.STATE_FILE ? String(process.env.STATE_FILE) : null;
 if (stateFile) {
@@ -242,13 +243,17 @@ async function main() {
         }
 
         if (msg.event.kind === 'CASE_CREATED' || msg.event.kind === 'CASE_UPDATED') {
-          const line = summarizeCase(msg.event.caseId);
-          if (line) console.log(line);
+          if (!silentSummaries) {
+            const line = summarizeCase(msg.event.caseId);
+            if (line) console.log(line);
+          }
         }
 
         if (msg.event.kind === 'COMMITMENT_CREATED' || msg.event.kind === 'COMMITMENT_UPDATED') {
-          const line = summarizeCase(msg.event.caseId);
-          if (line) console.log(line);
+          if (!silentSummaries) {
+            const line = summarizeCase(msg.event.caseId);
+            if (line) console.log(line);
+          }
         }
 
         if (msg.event.kind === 'STATUS_CHANGED') {

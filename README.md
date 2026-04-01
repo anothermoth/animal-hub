@@ -144,6 +144,9 @@ For a cleaner ops-style view (only periodic dashboard output, no per-event loggi
 
 ```bash
 SILENT_EVENTS=1 DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examples/minimal-client.js
+
+# For an even quieter mode (no per-case summaries either; dashboard only)
+SILENT_EVENTS=1 SILENT_SUMMARIES=1 DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
 ```
 
