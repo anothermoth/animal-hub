@@ -228,8 +228,8 @@ Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter
   - example: `/events?afterSeq=0&limit=200`
 
 ### Meta
-- `GET /meta/event-kinds` (supports `HEAD`)
-- `GET /meta/enums` (supports `HEAD`)
+- `GET /meta/event-kinds` (supports `HEAD`, `ETag`, `If-None-Match` -> 304)
+- `GET /meta/enums` (supports `HEAD`, `ETag`, `If-None-Match` -> 304)
 
 ## Docs
 - See **docs/DESIGN.md** for the system design + roadmap.
