@@ -48,10 +48,15 @@ test('GET /cases supports offset/limit pagination', async () => {
   const b1 = page1.json();
   assert.equal(b1.items.length, 2);
   assert.ok(b1.total >= 5);
+  assert.ok(b1.nextOffset != null);
+  assert.ok(b1.next);
 
   const page2 = await app.inject({ method: 'GET', url: '/cases?limit=2&offset=2' });
   assert.equal(page2.statusCode, 200);
-  assert.equal(page2.json().items.length, 2);
+  const b2 = page2.json();
+  assert.equal(b2.items.length, 2);
+  assert.ok(b2.nextOffset != null);
+  assert.ok(b2.next);
 
   const badLimit = await app.inject({ method: 'GET', url: '/cases?limit=0' });
   assert.equal(badLimit.statusCode, 400);
@@ -397,10 +402,15 @@ test('GET /cases/:id/commitments supports offset/limit pagination', async () => 
   const b1 = page1.json();
   assert.equal(b1.items.length, 2);
   assert.equal(b1.total, 5);
+  assert.ok(b1.nextOffset != null);
+  assert.ok(b1.next);
 
   const page2 = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?limit=2&offset=2` });
   assert.equal(page2.statusCode, 200);
-  assert.equal(page2.json().items.length, 2);
+  const b2 = page2.json();
+  assert.equal(b2.items.length, 2);
+  assert.ok(b2.nextOffset != null);
+  assert.ok(b2.next);
 
   const badLimit = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?limit=0` });
   assert.equal(badLimit.statusCode, 400);
@@ -1031,11 +1041,15 @@ test('GET /commitments supports offset/limit pagination', async () => {
   const b1 = page1.json();
   assert.equal(b1.items.length, 2);
   assert.ok(b1.total >= 5);
+  assert.ok(b1.nextOffset != null);
+  assert.ok(b1.next);
 
   const page2 = await app.inject({ method: 'GET', url: '/commitments?limit=2&offset=2' });
   assert.equal(page2.statusCode, 200);
   const b2 = page2.json();
   assert.equal(b2.items.length, 2);
+  assert.ok(b2.nextOffset != null);
+  assert.ok(b2.next);
 
   const badLimit = await app.inject({ method: 'GET', url: '/commitments?limit=0' });
   assert.equal(badLimit.statusCode, 400);

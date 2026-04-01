@@ -268,6 +268,17 @@ function buildNextEventsUrl(req, nextAfterSeq, nextSinceTs) {
   }
 }
 
+function buildNextOffsetUrl(req, nextOffset) {
+  try {
+    const rawUrl = req?.raw?.url ?? req?.url;
+    const url = rawUrl ? new URL(rawUrl, 'http://localhost') : new URL('http://localhost/');
+    url.searchParams.set('offset', String(nextOffset ?? 0));
+    return url.pathname + url.search;
+  } catch {
+    return null;
+  }
+}
+
 export function buildApp(opts = {}) {
   const app = Fastify({ logger: true, ...opts.fastify });
 
@@ -652,7 +663,15 @@ export function buildApp(opts = {}) {
     const total = items.length;
     const paged = items.slice(offset, offset + limit);
 
-    const payload = { items: paged, total, offset, limit };
+    const nextOffset = offset + paged.length;
+    const payload = {
+      items: paged,
+      total,
+      offset,
+      limit,
+      nextOffset: nextOffset < total ? nextOffset : null,
+      next: nextOffset < total ? buildNextOffsetUrl(req, nextOffset) : null,
+    };
     const etag = setMetaCacheHeaders(reply, payload);
     if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return payload;
@@ -701,7 +720,15 @@ export function buildApp(opts = {}) {
     const total = all.length;
     const items = all.slice(offset, offset + limit);
 
-    const payload = { items, total, offset, limit };
+    const nextOffset = offset + items.length;
+    const payload = {
+      items,
+      total,
+      offset,
+      limit,
+      nextOffset: nextOffset < total ? nextOffset : null,
+      next: nextOffset < total ? buildNextOffsetUrl(req, nextOffset) : null,
+    };
     const etag = setMetaCacheHeaders(reply, payload);
     if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return payload;
@@ -979,7 +1006,15 @@ export function buildApp(opts = {}) {
     const total = items.length;
     const paged = items.slice(offset, offset + limit);
 
-    const payload = { items: paged, total, offset, limit };
+    const nextOffset = offset + paged.length;
+    const payload = {
+      items: paged,
+      total,
+      offset,
+      limit,
+      nextOffset: nextOffset < total ? nextOffset : null,
+      next: nextOffset < total ? buildNextOffsetUrl(req, nextOffset) : null,
+    };
     const etag = setMetaCacheHeaders(reply, payload);
     if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return payload;
