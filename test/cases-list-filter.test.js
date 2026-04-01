@@ -84,6 +84,7 @@ test('GET /meta/event-kinds returns supported kinds', async () => {
   const body = res.json();
   assert.ok(Array.isArray(body.items));
   assert.ok(body.items.includes('STATUS_CHANGED'));
+  assert.ok(Object.prototype.hasOwnProperty.call(body, 'version'));
 
   await app.close();
 });
@@ -96,6 +97,7 @@ test('GET /meta/enums returns enum lists for clients', async () => {
   assert.equal(res.statusCode, 200);
   const body = res.json();
   assert.ok(body.enums);
+  assert.ok(Object.prototype.hasOwnProperty.call(body, 'version'));
   assert.ok(Array.isArray(body.enums.caseStatus));
   assert.ok(body.enums.riskLevel.includes('CODE_RED'));
   assert.ok(body.enums.commitmentType.includes('TRANSPORT'));

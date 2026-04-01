@@ -151,6 +151,8 @@ And fetch all client-facing enums (statuses, types, etc.):
 
 - `GET /meta/enums`
 
+Both endpoints also return a `version` field (best-effort; may be `null`) to help clients invalidate caches.
+
 ### Reconnect strategy (recommended)
 
 Each event includes a monotonically increasing `seq`. A common pattern is:
