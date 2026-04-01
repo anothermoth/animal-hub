@@ -160,6 +160,9 @@ Example:
 ```bash
 ETAG=$(curl -sSI localhost:3999/meta/enums | awk -F': ' 'tolower($1)=="etag"{gsub(/\r/,"",$2); print $2}')
 curl -i localhost:3999/meta/enums -H "If-None-Match: $ETAG"
+
+ETAG2=$(curl -sSI localhost:3999/meta/event-kinds | awk -F': ' 'tolower($1)=="etag"{gsub(/\r/,"",$2); print $2}')
+curl -i localhost:3999/meta/event-kinds -H "If-None-Match: $ETAG2"
 ```
 
 ### Reconnect strategy (recommended)
