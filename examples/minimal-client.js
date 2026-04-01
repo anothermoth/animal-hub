@@ -14,6 +14,19 @@ let lastSeq = Number(process.env.AFTER_SEQ ?? 0);
 const cases = new Map();
 const commitments = new Map();
 
+// Convenience preset (does not override explicitly provided vars): MODE=ops
+{
+  const mode = process.env.MODE ? String(process.env.MODE).trim().toLowerCase() : null;
+  const env = process.env;
+  const has = (name) => env[name] != null && String(env[name]).length > 0;
+  if (mode === 'ops') {
+    if (!has('SILENT_EVENTS')) process.env.SILENT_EVENTS = '1';
+    if (!has('SILENT_SUMMARIES')) process.env.SILENT_SUMMARIES = '1';
+    if (!has('DASHBOARD_ON_CHANGE')) process.env.DASHBOARD_ON_CHANGE = '1';
+    if (!has('DASHBOARD_EVERY_SEC')) process.env.DASHBOARD_EVERY_SEC = '300';
+  }
+}
+
 const silentEvents = process.env.SILENT_EVENTS === '1' || process.env.SILENT_EVENTS === 'true';
 const silentSummaries = process.env.SILENT_SUMMARIES === '1' || process.env.SILENT_SUMMARIES === 'true';
 

@@ -160,6 +160,12 @@ Recommended hybrid mode (event-driven + slow safety refresh):
 ```bash
 DASHBOARD_ON_CHANGE=1 DASHBOARD_EVERY_SEC=300 SILENT_EVENTS=1 SILENT_SUMMARIES=1 BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
+
+Shortcut (equivalent preset):
+
+```bash
+MODE=ops BASE_URL=http://localhost:3999 node examples/minimal-client.js
+```
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
