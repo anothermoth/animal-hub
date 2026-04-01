@@ -106,6 +106,29 @@ test('GET /cases/:id supports ETag / 304 Not Modified', async () => {
   await app.close();
 });
 
+test('GET /cases/:id supports include=commitments', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: { name: 'inc' } })).json();
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER' } });
+
+  const res = await app.inject({ method: 'GET', url: `/cases/${c.caseId}?include=commitments` });
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.ok(body.case);
+  assert.ok(Array.isArray(body.commitments));
+  assert.equal(body.case.caseId, c.caseId);
+  assert.equal(body.commitments.length, 1);
+
+  // unknown include rejected
+  const bad = await app.inject({ method: 'GET', url: `/cases/${c.caseId}?include=nope` });
+  assert.equal(bad.statusCode, 400);
+  assert.equal(bad.json().error, 'bad_query_include');
+
+  await app.close();
+});
+
 test('GET /cases rejects unknown risk/status values', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

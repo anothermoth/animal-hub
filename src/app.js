@@ -187,6 +187,12 @@ const ListCaseCommitmentsQuery = z
   })
   .strict();
 
+const GetCaseQuery = z
+  .object({
+    include: z.string().optional(),
+  })
+  .strict();
+
 function parseCsvSet(input) {
   if (!input) return null;
   const items = String(input)
@@ -651,9 +657,27 @@ export function buildApp(opts = {}) {
     const c = cases.get(req.params.id);
     if (!c) return reply.code(404).send({ error: 'not_found' });
 
-    const etag = setMetaCacheHeaders(reply, c);
+    const parsed = GetCaseQuery.safeParse(req.query ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
+
+    const include = parsed.data.include ? String(parsed.data.include).trim().toLowerCase() : '';
+    const includeSet = parseCsvSet(include);
+
+    if (includeSet && includeSet.size) {
+      // Only allow known includes for now.
+      for (const x of includeSet) {
+        if (x !== 'commitments') return reply.code(400).send({ error: 'bad_query_include' });
+      }
+    }
+
+    const payload =
+      includeSet && includeSet.has('commitments')
+        ? { case: c, commitments: listCommitmentsForCase(c.caseId) }
+        : c;
+
+    const etag = setMetaCacheHeaders(reply, payload);
     if (req.headers['if-none-match'] === etag) return reply.code(304).send();
-    return c;
+    return payload;
   });
 
   // Convenience endpoint for case detail views.
