@@ -223,9 +223,12 @@ Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter
 - WebSocket: `GET /ws`
 - HTTP feeds:
   - `GET /events` (global)
+    - cursor pagination: `afterSeq`, `sinceTs`, `limit`
+    - filters: `caseId`, `kind` (csv)
+    - example: `/events?afterSeq=0&limit=200&kind=STATUS_CHANGED,CASE_CLAIMED`
   - `GET /cases/:id/events` (per-case)
-  - cursor pagination: `afterSeq`, `sinceTs`, `limit`
-  - example: `/events?afterSeq=0&limit=200`
+    - cursor pagination: `afterSeq`, `sinceTs`, `limit`
+    - filter: `kind` (csv)
 
 ### Meta
 - `GET /meta/event-kinds` (supports `HEAD`, `ETag`, `If-None-Match` -> 304)
