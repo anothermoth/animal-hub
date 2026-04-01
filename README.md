@@ -290,7 +290,7 @@ Notes:
 ### Cases
 - `POST /cases` (validated)
 - `GET /cases`
-  - filters: `status`, `risk`, `state`
+  - filters: `status`, `risk`, `state`, `q`
   - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `deadlineAt:asc`, `deadlineAt:desc`, `risk:desc`)
   - pagination: `limit`, `offset`
   - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&sort=deadlineAt:asc&limit=50&offset=0`
