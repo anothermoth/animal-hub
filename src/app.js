@@ -173,6 +173,7 @@ const ListEventsQuery = z
 const ListCommitmentsQuery = z
   .object({
     caseId: z.string().optional(),
+    q: z.string().optional(),
     type: z.string().optional(), // comma-separated
     status: z.string().optional(), // comma-separated
     limit: z.string().optional(),
@@ -982,6 +983,7 @@ export function buildApp(opts = {}) {
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
 
     const caseId = parsed.data.caseId ? String(parsed.data.caseId) : null;
+    const query = parsed.data.q ? String(parsed.data.q).trim().toLowerCase() : null;
     const typeSetParsed = parseCsvEnumSet(parsed.data.type, CommitmentType);
     if (typeSetParsed?.error) return reply.code(400).send({ error: 'bad_query_type' });
     const typeSet = typeSetParsed;
@@ -999,6 +1001,24 @@ export function buildApp(opts = {}) {
       if (caseId && rec.caseId !== caseId) continue;
       if (typeSet && !typeSet.has(rec.type)) continue;
       if (statusSet && !statusSet.has(rec.status)) continue;
+
+      if (query) {
+        const fields = [
+          rec.commitId,
+          rec.caseId,
+          rec.type,
+          rec.status,
+          rec.party?.name,
+          rec.party?.org,
+          rec.party?.email,
+          rec.party?.phone,
+        ]
+          .filter((v) => typeof v === 'string' && v.trim().length)
+          .map((v) => v.trim().toLowerCase());
+
+        const haystack = fields.join(' | ');
+        if (!haystack.includes(query)) continue;
+      }
       items.push(rec);
     }
     items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));

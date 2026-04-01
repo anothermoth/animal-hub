@@ -1027,6 +1027,31 @@ test('GET /commitments supports type/status filters (csv) and validates enums', 
   await app.close();
 });
 
+test('GET /commitments supports q= free-text filtering (case-insensitive)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const com1 = (
+    await app.inject({
+      method: 'POST',
+      url: `/cases/${c.caseId}/commitments`,
+      payload: { type: 'TRANSPORT', party: { name: 'Taylor' } },
+    })
+  ).json();
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER', party: { name: 'Other' } } });
+
+  const res1 = await app.inject({ method: 'GET', url: '/commitments?q=tay' });
+  assert.equal(res1.statusCode, 200);
+  assert.ok(res1.json().items.some((x) => x.commitId === com1.commitId));
+
+  const res2 = await app.inject({ method: 'GET', url: '/commitments?q=notfound' });
+  assert.equal(res2.statusCode, 200);
+  assert.equal(res2.json().items.length, 0);
+
+  await app.close();
+});
+
 test('GET /commitments supports offset/limit pagination', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
