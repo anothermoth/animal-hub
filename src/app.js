@@ -341,6 +341,7 @@ export function buildApp(opts = {}) {
   app.get('/ws', { websocket: true }, (socket, req) => {
     // Optional filtering: /ws?kind=STATUS_CHANGED,CASE_CLAIMED
     let kindSet = null;
+    let kindInvalid = false;
     try {
       const rawUrl = req?.raw?.url ?? req?.url;
       const url = rawUrl ? new URL(rawUrl, 'http://localhost') : null;
@@ -349,6 +350,7 @@ export function buildApp(opts = {}) {
         const kinds = Array.from(kindRaw);
         const res = z.array(EventKind).safeParse(kinds);
         if (res.success) kindSet = new Set(res.data);
+        else kindInvalid = true;
       }
     } catch {
       // ignore query parse failures
@@ -356,6 +358,17 @@ export function buildApp(opts = {}) {
 
     const ws = socket?.send ? socket : socket?.socket;
     if (!ws || typeof ws.send !== 'function') return;
+
+    if (kindInvalid) {
+      // Close with policy violation to signal bad client params.
+      // (HTTP event feeds return 400 for the same condition.)
+      try {
+        ws.close?.(1008, 'bad kind');
+      } catch {
+        // ignore
+      }
+      return;
+    }
 
     const sub = { ws, kindSet };
     subscribers.add(sub);
