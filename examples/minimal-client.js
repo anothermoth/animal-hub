@@ -274,7 +274,12 @@ async function catchUp() {
 
 async function main() {
   await catchUp();
-  console.log(`caught up: lastSeq=${lastSeq} cases=${cases.size} commitments=${commitments.size}`);
+  console.log(
+    `caught up: lastSeq=${lastSeq} cases=${cases.size} commitments=${commitments.size} ` +
+      `mode=${process.env.MODE ?? 'none'} wsKind=${wsKind ?? 'none'} ` +
+      `silentEvents=${silentEvents} silentSummaries=${silentSummaries} ` +
+      `dashboardEverySec=${dashboardEverySec} dashboardOnChange=${dashboardOnChange}`,
+  );
 
   if (dashboardEveryMs > 0) {
     setInterval(() => {
