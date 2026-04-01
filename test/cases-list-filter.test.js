@@ -142,6 +142,38 @@ test('GET /cases supports sort=risk:desc (CODE_RED first)', async () => {
   await app.close();
 });
 
+test('GET /cases supports q= free-text filtering (case-insensitive)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const a = (
+    await app.inject({
+      method: 'POST',
+      url: '/cases',
+      payload: { name: 'Buddy', externalIds: ['A#123'], shelter: { name: 'Travis County' }, notes: 'Very sweet' },
+    })
+  ).json();
+  await app.inject({ method: 'POST', url: '/cases', payload: { name: 'Other' } });
+
+  const res1 = await app.inject({ method: 'GET', url: '/cases?q=bud' });
+  assert.equal(res1.statusCode, 200);
+  assert.ok(res1.json().items.some((x) => x.caseId === a.caseId));
+
+  const res2 = await app.inject({ method: 'GET', url: '/cases?q=travis' });
+  assert.equal(res2.statusCode, 200);
+  assert.ok(res2.json().items.some((x) => x.caseId === a.caseId));
+
+  const res3 = await app.inject({ method: 'GET', url: '/cases?q=a%23123' });
+  assert.equal(res3.statusCode, 200);
+  assert.ok(res3.json().items.some((x) => x.caseId === a.caseId));
+
+  const res4 = await app.inject({ method: 'GET', url: '/cases?q=notfound' });
+  assert.equal(res4.statusCode, 200);
+  assert.equal(res4.json().items.length, 0);
+
+  await app.close();
+});
+
 test('GET /cases rejects unknown sort value', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

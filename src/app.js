@@ -45,8 +45,8 @@ const PatchCommitmentBody = z
   .object({
     type: CommitmentType.optional(),
     status: CommitmentStatus.optional(),
-    party: z.record(z.any()).optional(),
-    details: z.record(z.any()).optional(),
+    party: z.record(z.string(), z.any()).optional(),
+    details: z.record(z.string(), z.any()).optional(),
   })
   .strict();
 
@@ -63,7 +63,7 @@ const CreateCommitmentBody = z
       })
       .partial()
       .optional(),
-    details: z.record(z.any()).optional(),
+    details: z.record(z.string(), z.any()).optional(),
   })
   .strict();
 
@@ -95,7 +95,7 @@ const CreateCaseBody = z
     sex: z.string().optional(),
     ageApprox: z.string().optional(),
     breedGuess: z.string().optional(),
-    shelter: z.record(z.any()).optional(),
+    shelter: z.record(z.string(), z.any()).optional(),
     deadlineAt: z
       .string()
       .optional()
@@ -121,6 +121,7 @@ const ListCasesQuery = z
     status: z.string().optional(), // comma-separated
     risk: z.string().optional(), // comma-separated
     state: z.string().optional(),
+    q: z.string().optional(),
     sort: z.string().optional(),
     limit: z.string().optional(),
     offset: z.string().optional(),
@@ -515,6 +516,7 @@ export function buildApp(opts = {}) {
     }
 
     const state = q.state ? String(q.state).trim().toUpperCase() : null;
+    const query = q.q ? String(q.q).trim().toLowerCase() : null;
 
     // Sort options kept intentionally small for MVP clients.
     // - createdAt:asc|desc (default asc for stable pagination)
@@ -555,6 +557,22 @@ export function buildApp(opts = {}) {
       if (state) {
         const recState = rec.location?.state ? String(rec.location.state).trim().toUpperCase() : null;
         if (recState !== state) continue;
+      }
+
+      if (query) {
+        const fields = [
+          rec.name,
+          rec.species,
+          rec.breedGuess,
+          rec.notes,
+          rec.shelter?.name,
+          ...(Array.isArray(rec.externalIds) ? rec.externalIds : []),
+        ]
+          .filter((v) => typeof v === 'string' && v.trim().length)
+          .map((v) => v.trim().toLowerCase());
+
+        const haystack = fields.join(' | ');
+        if (!haystack.includes(query)) continue;
       }
       items.push(rec);
     }
