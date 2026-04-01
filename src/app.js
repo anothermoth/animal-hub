@@ -230,6 +230,31 @@ function parseLimitOffset(q, { defaultLimit = 200, maxLimit = 1000 } = {}) {
   return { limit, offset };
 }
 
+function parseAfterSeqSinceTsLimit(q, { defaultLimit = 200, maxLimit = 1000 } = {}) {
+  let since = null;
+  if (q?.sinceTs) {
+    const d = new Date(String(q.sinceTs));
+    if (Number.isNaN(d.getTime())) return { error: 'bad_query_sinceTs' };
+    since = d.toISOString();
+  }
+
+  let afterSeq = null;
+  if (q?.afterSeq != null) {
+    const n = Number(q.afterSeq);
+    if (!Number.isFinite(n) || n < 0) return { error: 'bad_query_afterSeq' };
+    afterSeq = Math.floor(n);
+  }
+
+  let limit = defaultLimit;
+  if (q?.limit != null) {
+    const n = Number(q.limit);
+    if (!Number.isFinite(n) || n < 1) return { error: 'bad_query_limit' };
+    limit = Math.min(maxLimit, Math.floor(n));
+  }
+
+  return { since, afterSeq, limit };
+}
+
 export function buildApp(opts = {}) {
   const app = Fastify({ logger: true, ...opts.fastify });
 
@@ -351,26 +376,9 @@ export function buildApp(opts = {}) {
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
     const q = parsed.data;
 
-    let since = null;
-    if (q.sinceTs) {
-      const d = new Date(String(q.sinceTs));
-      if (Number.isNaN(d.getTime())) return reply.code(400).send({ error: 'bad_query_sinceTs' });
-      since = d.toISOString();
-    }
-
-    let afterSeq = null;
-    if (q.afterSeq != null) {
-      const n = Number(q.afterSeq);
-      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_afterSeq' });
-      afterSeq = Math.floor(n);
-    }
-
-    let limit = 200;
-    if (q.limit != null) {
-      const n = Number(q.limit);
-      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
-      limit = Math.min(1000, Math.floor(n));
-    }
+    const curs = parseAfterSeqSinceTsLimit(q);
+    if (curs.error) return reply.code(400).send({ error: curs.error });
+    const { since, afterSeq, limit } = curs;
 
     const caseId = q.caseId ? String(q.caseId) : null;
     const kindSetParsed = parseCsvEnumSet(q.kind, EventKind);
@@ -416,30 +424,13 @@ export function buildApp(opts = {}) {
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
     const q = parsed.data;
 
-    let since = null;
-    if (q.sinceTs) {
-      const d = new Date(String(q.sinceTs));
-      if (Number.isNaN(d.getTime())) return reply.code(400).send({ error: 'bad_query_sinceTs' });
-      since = d.toISOString();
-    }
-
-    let afterSeq = null;
-    if (q.afterSeq != null) {
-      const n = Number(q.afterSeq);
-      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_afterSeq' });
-      afterSeq = Math.floor(n);
-    }
+    const curs = parseAfterSeqSinceTsLimit(q);
+    if (curs.error) return reply.code(400).send({ error: curs.error });
+    const { since, afterSeq, limit } = curs;
 
     const kindSetParsed = parseCsvEnumSet(q.kind, EventKind);
     if (kindSetParsed?.error) return reply.code(400).send({ error: 'bad_query_kind' });
     const kindSet = kindSetParsed;
-
-    let limit = 200;
-    if (q.limit != null) {
-      const n = Number(q.limit);
-      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
-      limit = Math.min(1000, Math.floor(n));
-    }
 
     const items = [];
     if (afterSeq != null || since) {
