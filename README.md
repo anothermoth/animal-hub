@@ -181,6 +181,12 @@ Example startup line (signal-only):
 caught up: lastSeq=123 cases=10 commitments=4 mode=signal wsKind=STATUS_CHANGED,CASE_CLAIMED silentEvents=true silentSummaries=true dashboardEverySec=0 dashboardOnChange=false stateFile=none stateFlushMs=1000
 ```
 
+Example startup line (signal + dashboard):
+
+```text
+caught up: lastSeq=123 cases=10 commitments=4 mode=signal-dashboard wsKind=STATUS_CHANGED,CASE_CLAIMED silentEvents=true silentSummaries=true dashboardEverySec=300 dashboardOnChange=true stateFile=none stateFlushMs=1000
+```
+
 Signal-only preset (high-signal websocket kinds, minimal output):
 
 ```bash
