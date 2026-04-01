@@ -14,6 +14,8 @@ let lastSeq = Number(process.env.AFTER_SEQ ?? 0);
 const cases = new Map();
 const commitments = new Map();
 
+const silentEvents = process.env.SILENT_EVENTS === '1' || process.env.SILENT_EVENTS === 'true';
+
 const stateFile = process.env.STATE_FILE ? String(process.env.STATE_FILE) : null;
 if (stateFile) {
   try {
@@ -232,9 +234,12 @@ async function main() {
       const msg = JSON.parse(buf.toString());
       if (msg.type === 'event') {
         applyEvent(msg.event);
-        console.log(
-          `event kind=${msg.event.kind} seq=${msg.event.seq} cases=${cases.size} commitments=${commitments.size}`,
-        );
+
+        if (!silentEvents) {
+          console.log(
+            `event kind=${msg.event.kind} seq=${msg.event.seq} cases=${cases.size} commitments=${commitments.size}`,
+          );
+        }
 
         if (msg.event.kind === 'CASE_CREATED' || msg.event.kind === 'CASE_UPDATED') {
           const line = summarizeCase(msg.event.caseId);
@@ -248,7 +253,9 @@ async function main() {
 
         if (msg.event.kind === 'STATUS_CHANGED') {
           const { from, to, by } = msg.event.payload ?? {};
-          console.log(`status changed caseId=${msg.event.caseId} ${from} -> ${to} by=${by ?? 'n/a'}`);
+          if (!silentEvents) {
+            console.log(`status changed caseId=${msg.event.caseId} ${from} -> ${to} by=${by ?? 'n/a'}`);
+          }
         }
       }
     } catch {

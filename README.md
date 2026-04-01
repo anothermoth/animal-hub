@@ -139,6 +139,12 @@ By default, the client flushes `STATE_FILE` at most once per second; you can ove
 - Set `STATE_FLUSH_MS=0` to flush on every event (more durable, more disk writes).
 
 The client also flushes state on `SIGINT` / `SIGTERM` (Ctrl+C / shutdown) to reduce cursor loss.
+
+For a cleaner ops-style view (only periodic dashboard output, no per-event logging), run with:
+
+```bash
+SILENT_EVENTS=1 DASHBOARD_EVERY_SEC=30 BASE_URL=http://localhost:3999 node examples/minimal-client.js
+```
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
