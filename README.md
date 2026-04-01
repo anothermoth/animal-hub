@@ -122,6 +122,11 @@ DASHBOARD_STATUS=OPEN,HOLD_REQUESTED DASHBOARD_EVERY_SEC=30 BASE_URL=http://loca
 
 # Run in “signal-only” mode (subscribe to selected event kinds)
 WS_KIND=STATUS_CHANGED,CASE_CLAIMED AFTER_SEQ=0 BASE_URL=http://localhost:3999 node examples/minimal-client.js
+
+Notes:
+- `AFTER_SEQ` controls the initial HTTP catch-up cursor.
+- `WS_KIND` controls which live websocket event kinds you receive.
+- In a real deployment, persist the last seen `seq` and restart with `AFTER_SEQ=<lastSeenSeq>`.
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
