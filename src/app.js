@@ -212,6 +212,24 @@ function parseCsvEnumSet(raw, enumSchema) {
   return new Set(res.data);
 }
 
+function parseLimitOffset(q, { defaultLimit = 200, maxLimit = 1000 } = {}) {
+  let limit = defaultLimit;
+  if (q?.limit != null) {
+    const n = Number(q.limit);
+    if (!Number.isFinite(n) || n < 1) return { error: 'bad_query_limit' };
+    limit = Math.min(maxLimit, Math.floor(n));
+  }
+
+  let offset = 0;
+  if (q?.offset != null) {
+    const n = Number(q.offset);
+    if (!Number.isFinite(n) || n < 0) return { error: 'bad_query_offset' };
+    offset = Math.floor(n);
+  }
+
+  return { limit, offset };
+}
+
 export function buildApp(opts = {}) {
   const app = Fastify({ logger: true, ...opts.fastify });
 
@@ -567,19 +585,9 @@ export function buildApp(opts = {}) {
     };
     const cmpRiskDesc = (a, b) => (riskRank[b] ?? -1) - (riskRank[a] ?? -1);
 
-    let limit = 200;
-    if (q.limit != null) {
-      const n = Number(q.limit);
-      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
-      limit = Math.min(1000, Math.floor(n));
-    }
-
-    let offset = 0;
-    if (q.offset != null) {
-      const n = Number(q.offset);
-      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_offset' });
-      offset = Math.floor(n);
-    }
+    const lo = parseLimitOffset(q);
+    if (lo.error) return reply.code(400).send({ error: lo.error });
+    const { limit, offset } = lo;
 
     const items = [];
     for (const rec of cases.values()) {
@@ -675,19 +683,9 @@ export function buildApp(opts = {}) {
     const parsed = ListCaseCommitmentsQuery.safeParse(req.query ?? {});
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
 
-    let limit = 200;
-    if (parsed.data.limit != null) {
-      const n = Number(parsed.data.limit);
-      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
-      limit = Math.min(1000, Math.floor(n));
-    }
-
-    let offset = 0;
-    if (parsed.data.offset != null) {
-      const n = Number(parsed.data.offset);
-      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_offset' });
-      offset = Math.floor(n);
-    }
+    const lo = parseLimitOffset(parsed.data);
+    if (lo.error) return reply.code(400).send({ error: lo.error });
+    const { limit, offset } = lo;
 
     const all = listCommitmentsForCase(c.caseId);
     const total = all.length;
@@ -955,19 +953,9 @@ export function buildApp(opts = {}) {
     if (statusSetParsed?.error) return reply.code(400).send({ error: 'bad_query_status' });
     const statusSet = statusSetParsed;
 
-    let limit = 200;
-    if (parsed.data.limit != null) {
-      const n = Number(parsed.data.limit);
-      if (!Number.isFinite(n) || n < 1) return reply.code(400).send({ error: 'bad_query_limit' });
-      limit = Math.min(1000, Math.floor(n));
-    }
-
-    let offset = 0;
-    if (parsed.data.offset != null) {
-      const n = Number(parsed.data.offset);
-      if (!Number.isFinite(n) || n < 0) return reply.code(400).send({ error: 'bad_query_offset' });
-      offset = Math.floor(n);
-    }
+    const lo = parseLimitOffset(parsed.data);
+    if (lo.error) return reply.code(400).send({ error: lo.error });
+    const { limit, offset } = lo;
 
     const items = [];
     for (const rec of commitments.values()) {
