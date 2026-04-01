@@ -331,6 +331,7 @@ Notes:
 - `GET /commitments`
   - filters: `caseId`, `type`, `status` (type/status are comma-separated), `q`
     - `q` supports multiple terms (split on whitespace, AND semantics)
+  - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `updatedAt:asc`, `updatedAt:desc`)
   - pagination: `limit`, `offset` (response includes `nextOffset` and `next`)
   - example: `/commitments?type=TRANSPORT&status=PENDING,CONFIRMED&limit=100&offset=0`
 - `PATCH /commitments/:id` (validated patch)
