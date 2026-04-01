@@ -223,6 +223,28 @@ test('GET /cases supports q= free-text filtering (case-insensitive)', async () =
   await app.close();
 });
 
+test('GET /cases q= supports multi-term AND matching', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const hit = (
+    await app.inject({
+      method: 'POST',
+      url: '/cases',
+      payload: { name: 'Buddy', notes: 'Very sweet dog' },
+    })
+  ).json();
+  await app.inject({ method: 'POST', url: '/cases', payload: { name: 'Buddy', notes: 'Not tasty' } });
+
+  const res = await app.inject({ method: 'GET', url: '/cases?q=buddy%20sweet' });
+  assert.equal(res.statusCode, 200);
+  const items = res.json().items;
+  assert.equal(items.length, 1);
+  assert.equal(items[0].caseId, hit.caseId);
+
+  await app.close();
+});
+
 test('GET /cases rejects unknown sort value', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

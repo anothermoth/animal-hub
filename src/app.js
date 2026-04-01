@@ -285,6 +285,8 @@ function commitmentMatchesQuery(rec, query) {
   if (!query) return true;
   const q = String(query).trim().toLowerCase();
   if (!q) return true;
+  const terms = q.split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
 
   const fields = [
     rec?.commitId,
@@ -299,7 +301,30 @@ function commitmentMatchesQuery(rec, query) {
     .filter((v) => typeof v === 'string' && v.trim().length)
     .map((v) => v.trim().toLowerCase());
 
-  return fields.join(' | ').includes(q);
+  const haystack = fields.join(' | ');
+  return terms.every((t) => haystack.includes(t));
+}
+
+function caseMatchesQuery(rec, query) {
+  if (!query) return true;
+  const q = String(query).trim().toLowerCase();
+  if (!q) return true;
+  const terms = q.split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+
+  const fields = [
+    rec?.name,
+    rec?.species,
+    rec?.breedGuess,
+    rec?.notes,
+    rec?.shelter?.name,
+    ...(Array.isArray(rec?.externalIds) ? rec.externalIds : []),
+  ]
+    .filter((v) => typeof v === 'string' && v.trim().length)
+    .map((v) => v.trim().toLowerCase());
+
+  const haystack = fields.join(' | ');
+  return terms.every((t) => haystack.includes(t));
 }
 
 export function buildApp(opts = {}) {
@@ -609,7 +634,7 @@ export function buildApp(opts = {}) {
     const riskSet = riskSetParsed;
 
     const state = q.state ? String(q.state).trim().toUpperCase() : null;
-    const query = q.q ? String(q.q).trim().toLowerCase() : null;
+    const query = q.q ? String(q.q).trim() : null;
 
     // Sort options kept intentionally small for MVP clients.
     // - createdAt:asc|desc (default asc for stable pagination)
@@ -642,21 +667,7 @@ export function buildApp(opts = {}) {
         if (recState !== state) continue;
       }
 
-      if (query) {
-        const fields = [
-          rec.name,
-          rec.species,
-          rec.breedGuess,
-          rec.notes,
-          rec.shelter?.name,
-          ...(Array.isArray(rec.externalIds) ? rec.externalIds : []),
-        ]
-          .filter((v) => typeof v === 'string' && v.trim().length)
-          .map((v) => v.trim().toLowerCase());
-
-        const haystack = fields.join(' | ');
-        if (!haystack.includes(query)) continue;
-      }
+      if (!caseMatchesQuery(rec, query)) continue;
       items.push(rec);
     }
 
@@ -739,7 +750,7 @@ export function buildApp(opts = {}) {
     if (lo.error) return reply.code(400).send({ error: lo.error });
     const { limit, offset } = lo;
 
-    const query = parsed.data.q ? String(parsed.data.q).trim().toLowerCase() : null;
+    const query = parsed.data.q ? String(parsed.data.q).trim() : null;
 
     let all = listCommitmentsForCase(c.caseId);
     if (query) {
@@ -1011,7 +1022,7 @@ export function buildApp(opts = {}) {
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
 
     const caseId = parsed.data.caseId ? String(parsed.data.caseId) : null;
-    const query = parsed.data.q ? String(parsed.data.q).trim().toLowerCase() : null;
+    const query = parsed.data.q ? String(parsed.data.q).trim() : null;
     const typeSetParsed = parseCsvEnumSet(parsed.data.type, CommitmentType);
     if (typeSetParsed?.error) return reply.code(400).send({ error: 'bad_query_type' });
     const typeSet = typeSetParsed;
