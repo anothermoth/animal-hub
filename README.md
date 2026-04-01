@@ -169,6 +169,12 @@ MODE=ops BASE_URL=http://localhost:3999 node examples/minimal-client.js
 
 The client prints a startup line showing the *effective* settings (after applying any `MODE=*` preset), so you can verify it’s running with the options you expect.
 
+Example startup line:
+
+```text
+caught up: lastSeq=123 cases=10 commitments=4 mode=ops wsKind=none silentEvents=true silentSummaries=true dashboardEverySec=300 dashboardOnChange=true stateFile=.client-state.json stateFlushMs=1000
+```
+
 Signal-only preset (high-signal websocket kinds, minimal output):
 
 ```bash
