@@ -197,6 +197,12 @@ const GetCaseQuery = z
   })
   .strict();
 
+const HealthQuery = z
+  .object({
+    include: z.string().optional(),
+  })
+  .strict();
+
 function parseCsvSet(input) {
   if (!input) return null;
   const items = String(input)
@@ -428,11 +434,26 @@ export function buildApp(opts = {}) {
   app.get('/healthz', async (req, reply) => {
     // Health checks should not be cached by intermediaries.
     reply.header('cache-control', 'no-store');
+
+    const parsed = HealthQuery.safeParse(req.query ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
+
+    const include = parsed.data.include ? String(parsed.data.include).trim().toLowerCase() : '';
+    const includeSet = parseCsvSet(include);
+    if (includeSet && includeSet.size) {
+      for (const x of includeSet) {
+        if (x !== 'counts') return reply.code(400).send({ error: 'bad_query_include' });
+      }
+    }
+
     return {
       ok: true,
       version: metaVersion,
       ts: new Date().toISOString(),
       uptimeSec: Math.floor((Date.now() - startedAtMs) / 1000),
+      counts: includeSet && includeSet.has('counts')
+        ? { cases: cases.size, commitments: commitments.size, events: events.length }
+        : undefined,
     };
   });
 

@@ -314,6 +314,29 @@ test('GET /healthz returns ok + version + uptime', async () => {
   await app.close();
 });
 
+test('GET /healthz supports include=counts', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  await app.inject({ method: 'POST', url: '/cases', payload: {} });
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER' } });
+
+  const res = await app.inject({ method: 'GET', url: '/healthz?include=counts' });
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.ok(body.counts);
+  assert.ok(typeof body.counts.cases === 'number');
+  assert.ok(typeof body.counts.commitments === 'number');
+  assert.ok(typeof body.counts.events === 'number');
+
+  const bad = await app.inject({ method: 'GET', url: '/healthz?include=nope' });
+  assert.equal(bad.statusCode, 400);
+  assert.equal(bad.json().error, 'bad_query_include');
+
+  await app.close();
+});
+
 test('GET /meta/enums returns enum lists for clients', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
