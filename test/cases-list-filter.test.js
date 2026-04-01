@@ -191,6 +191,28 @@ test('GET /cases supports sort=risk:desc (CODE_RED first)', async () => {
   await app.close();
 });
 
+test('GET /cases supports sort=updatedAt:desc (recent activity first)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const a = (await app.inject({ method: 'POST', url: '/cases', payload: { name: 'a' } })).json();
+  const b = (await app.inject({ method: 'POST', url: '/cases', payload: { name: 'b' } })).json();
+
+  // Touch case a so it becomes most-recently-updated.
+  const patched = await app.inject({ method: 'PATCH', url: `/cases/${a.caseId}`, payload: { notes: 'updated' } });
+  assert.equal(patched.statusCode, 200);
+
+  const res = await app.inject({ method: 'GET', url: '/cases?sort=updatedAt:desc' });
+  assert.equal(res.statusCode, 200);
+  const items = res.json().items;
+  const idxA = items.findIndex((x) => x.caseId === a.caseId);
+  const idxB = items.findIndex((x) => x.caseId === b.caseId);
+  assert.ok(idxA !== -1 && idxB !== -1);
+  assert.ok(idxA < idxB);
+
+  await app.close();
+});
+
 test('GET /cases supports q= free-text filtering (case-insensitive)', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

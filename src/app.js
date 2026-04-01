@@ -638,6 +638,7 @@ export function buildApp(opts = {}) {
 
     // Sort options kept intentionally small for MVP clients.
     // - createdAt:asc|desc (default asc for stable pagination)
+    // - updatedAt:asc|desc
     // - deadlineAt:asc|desc (null deadlines sort last)
     // - risk:desc (CODE_RED first)
     const sortRaw = q.sort ? String(q.sort).trim() : '';
@@ -676,6 +677,16 @@ export function buildApp(opts = {}) {
       items.sort((a, b) => cmpStr(a.createdAt, b.createdAt));
     } else if (sort === 'createdAt:desc') {
       items.sort((a, b) => cmpStr(b.createdAt, a.createdAt));
+    } else if (sort === 'updatedAt:asc') {
+      items.sort((a, b) => {
+        const u = cmpStr(a.updatedAt, b.updatedAt);
+        return u !== 0 ? u : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else if (sort === 'updatedAt:desc') {
+      items.sort((a, b) => {
+        const u = cmpStr(b.updatedAt, a.updatedAt);
+        return u !== 0 ? u : cmpStr(a.createdAt, b.createdAt);
+      });
     } else if (sort === 'deadlineAt:asc') {
       items.sort((a, b) => {
         const d = cmpDeadline(a.deadlineAt, b.deadlineAt);
