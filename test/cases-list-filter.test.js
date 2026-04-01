@@ -98,6 +98,61 @@ test('GET /cases rejects unknown risk/status values', async () => {
   await app.close();
 });
 
+test('GET /cases supports sort=deadlineAt:asc (null deadlines last)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const t1 = new Date(Date.now() + 60_000).toISOString();
+  const t2 = new Date(Date.now() + 120_000).toISOString();
+
+  const a = (await app.inject({ method: 'POST', url: '/cases', payload: { name: 'a', deadlineAt: t2 } })).json();
+  const b = (await app.inject({ method: 'POST', url: '/cases', payload: { name: 'b', deadlineAt: t1 } })).json();
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: { name: 'c' } })).json();
+
+  const res = await app.inject({ method: 'GET', url: '/cases?sort=deadlineAt:asc' });
+  assert.equal(res.statusCode, 200);
+  const items = res.json().items;
+
+  const idxA = items.findIndex((x) => x.caseId === a.caseId);
+  const idxB = items.findIndex((x) => x.caseId === b.caseId);
+  const idxC = items.findIndex((x) => x.caseId === c.caseId);
+
+  assert.ok(idxB !== -1 && idxA !== -1 && idxC !== -1);
+  assert.ok(idxB < idxA);
+  assert.ok(idxC > idxA);
+
+  await app.close();
+});
+
+test('GET /cases supports sort=risk:desc (CODE_RED first)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const low = (await app.inject({ method: 'POST', url: '/cases', payload: { riskLevel: 'LOW' } })).json();
+  const cr = (await app.inject({ method: 'POST', url: '/cases', payload: { riskLevel: 'CODE_RED' } })).json();
+
+  const res = await app.inject({ method: 'GET', url: '/cases?sort=risk:desc' });
+  assert.equal(res.statusCode, 200);
+  const items = res.json().items;
+  const idxLow = items.findIndex((x) => x.caseId === low.caseId);
+  const idxCr = items.findIndex((x) => x.caseId === cr.caseId);
+  assert.ok(idxCr !== -1 && idxLow !== -1);
+  assert.ok(idxCr < idxLow);
+
+  await app.close();
+});
+
+test('GET /cases rejects unknown sort value', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const res = await app.inject({ method: 'GET', url: '/cases?sort=nope' });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.json().error, 'bad_query_sort');
+
+  await app.close();
+});
+
 test('GET /meta/event-kinds returns supported kinds', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

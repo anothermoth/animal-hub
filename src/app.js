@@ -121,6 +121,7 @@ const ListCasesQuery = z
     status: z.string().optional(), // comma-separated
     risk: z.string().optional(), // comma-separated
     state: z.string().optional(),
+    sort: z.string().optional(),
     limit: z.string().optional(),
     offset: z.string().optional(),
   })
@@ -515,6 +516,24 @@ export function buildApp(opts = {}) {
 
     const state = q.state ? String(q.state).trim().toUpperCase() : null;
 
+    // Sort options kept intentionally small for MVP clients.
+    // - createdAt:asc|desc (default asc for stable pagination)
+    // - deadlineAt:asc|desc (null deadlines sort last)
+    // - risk:desc (CODE_RED first)
+    const sortRaw = q.sort ? String(q.sort).trim() : '';
+    const sort = sortRaw || 'createdAt:asc';
+    const riskRank = { LOW: 0, MED: 1, HIGH: 2, CODE_RED: 3 };
+    const cmpStr = (a, b) => String(a).localeCompare(String(b));
+    const cmpDeadline = (a, b) => {
+      const ax = a ? String(a) : null;
+      const bx = b ? String(b) : null;
+      if (ax == null && bx == null) return 0;
+      if (ax == null) return 1;
+      if (bx == null) return -1;
+      return cmpStr(ax, bx);
+    };
+    const cmpRiskDesc = (a, b) => (riskRank[b] ?? -1) - (riskRank[a] ?? -1);
+
     let limit = 200;
     if (q.limit != null) {
       const n = Number(q.limit);
@@ -541,7 +560,28 @@ export function buildApp(opts = {}) {
     }
 
     // stable ordering for pagination
-    items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    if (sort === 'createdAt:asc') {
+      items.sort((a, b) => cmpStr(a.createdAt, b.createdAt));
+    } else if (sort === 'createdAt:desc') {
+      items.sort((a, b) => cmpStr(b.createdAt, a.createdAt));
+    } else if (sort === 'deadlineAt:asc') {
+      items.sort((a, b) => {
+        const d = cmpDeadline(a.deadlineAt, b.deadlineAt);
+        return d !== 0 ? d : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else if (sort === 'deadlineAt:desc') {
+      items.sort((a, b) => {
+        const d = cmpDeadline(b.deadlineAt, a.deadlineAt);
+        return d !== 0 ? d : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else if (sort === 'risk:desc') {
+      items.sort((a, b) => {
+        const r = cmpRiskDesc(a.riskLevel, b.riskLevel);
+        return r !== 0 ? r : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else {
+      return reply.code(400).send({ error: 'bad_query_sort' });
+    }
     const total = items.length;
     const paged = items.slice(offset, offset + limit);
     return { items: paged, total, offset, limit };
