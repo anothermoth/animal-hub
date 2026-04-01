@@ -297,6 +297,22 @@ test('GET /meta/event-kinds returns supported kinds', async () => {
   await app.close();
 });
 
+test('GET /healthz returns ok + version + uptime', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const res = await app.inject({ method: 'GET', url: '/healthz' });
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.equal(body.ok, true);
+  assert.ok(Object.prototype.hasOwnProperty.call(body, 'version'));
+  assert.ok(typeof body.ts === 'string');
+  assert.ok(Number.isInteger(body.uptimeSec));
+  assert.ok(body.uptimeSec >= 0);
+
+  await app.close();
+});
+
 test('GET /meta/enums returns enum lists for clients', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

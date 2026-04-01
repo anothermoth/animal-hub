@@ -332,6 +332,8 @@ function caseMatchesQuery(rec, query) {
 export function buildApp(opts = {}) {
   const app = Fastify({ logger: true, ...opts.fastify });
 
+  const startedAtMs = Date.now();
+
   const metaVersion =
     opts.metaVersion ??
     process.env.APP_VERSION ??
@@ -423,7 +425,12 @@ export function buildApp(opts = {}) {
   app.register(cors, { origin: true });
   app.register(websocket);
 
-  app.get('/healthz', async () => ({ ok: true }));
+  app.get('/healthz', async () => ({
+    ok: true,
+    version: metaVersion,
+    ts: new Date().toISOString(),
+    uptimeSec: Math.floor((Date.now() - startedAtMs) / 1000),
+  }));
 
   app.get('/meta/enums', async (req, reply) => {
     const payload = { enums: ENUMS, version: metaVersion };
