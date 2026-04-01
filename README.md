@@ -147,6 +147,10 @@ You can also fetch the supported list via HTTP:
 
 - `GET /meta/event-kinds`
 
+And fetch all client-facing enums (statuses, types, etc.):
+
+- `GET /meta/enums`
+
 ### Reconnect strategy (recommended)
 
 Each event includes a monotonically increasing `seq`. A common pattern is:

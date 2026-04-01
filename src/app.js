@@ -32,6 +32,13 @@ const EventKind = z.enum([
 ]);
 
 const EVENT_KINDS = EventKind.options;
+const ENUMS = {
+  caseStatus: CaseStatus.options,
+  riskLevel: RiskLevel.options,
+  commitmentType: CommitmentType.options,
+  commitmentStatus: CommitmentStatus.options,
+  eventKind: EVENT_KINDS,
+};
 
 const PatchCommitmentBody = z
   .object({
@@ -206,6 +213,8 @@ export function buildApp(opts = {}) {
   app.get('/healthz', async () => ({ ok: true }));
 
   app.get('/meta/event-kinds', async () => ({ items: EVENT_KINDS }));
+
+  app.get('/meta/enums', async () => ({ enums: ENUMS }));
 
   // Global event stream (useful for dashboards / "what changed" views).
   // Supports the same cursors as /cases/:id/events.

@@ -88,6 +88,22 @@ test('GET /meta/event-kinds returns supported kinds', async () => {
   await app.close();
 });
 
+test('GET /meta/enums returns enum lists for clients', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const res = await app.inject({ method: 'GET', url: '/meta/enums' });
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.ok(body.enums);
+  assert.ok(Array.isArray(body.enums.caseStatus));
+  assert.ok(body.enums.riskLevel.includes('CODE_RED'));
+  assert.ok(body.enums.commitmentType.includes('TRANSPORT'));
+  assert.ok(body.enums.eventKind.includes('CASE_CREATED'));
+
+  await app.close();
+});
+
 test('PATCH /commitments/:id updates a commitment and validates enums', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
