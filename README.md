@@ -339,6 +339,15 @@ curl -I localhost:3999/healthz
   - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `updatedAt:asc`, `updatedAt:desc`, `deadlineAt:asc`, `deadlineAt:desc`, `risk:desc`)
   - pagination: `limit`, `offset` (response includes `nextOffset` and `next`)
   - example: `/cases?status=OPEN&risk=CODE_RED&state=TX&sort=deadlineAt:asc&limit=50&offset=0`
+
+Example (page with `next`):
+
+```bash
+R1=$(curl -sS 'localhost:3999/cases?limit=2&offset=0&sort=createdAt:asc')
+echo "$R1" | cat
+NEXT=$(echo "$R1" | node -p 'JSON.parse(fs.readFileSync(0,"utf8")).next')
+curl -sS "localhost:3999$NEXT" | cat
+```
 - `GET /cases/:id`
   - optional: `include=commitments` to return `{ case, commitments }` in one request
 - `PATCH /cases/:id`
@@ -357,6 +366,15 @@ curl -I localhost:3999/healthz
   - sorting: `sort` (one of: `createdAt:asc`, `createdAt:desc`, `updatedAt:asc`, `updatedAt:desc`)
   - pagination: `limit`, `offset` (response includes `nextOffset` and `next`)
   - example: `/commitments?type=TRANSPORT&status=PENDING,CONFIRMED&limit=100&offset=0`
+
+Example (page with `next`):
+
+```bash
+R1=$(curl -sS 'localhost:3999/commitments?limit=2&offset=0&sort=createdAt:asc')
+echo "$R1" | cat
+NEXT=$(echo "$R1" | node -p 'JSON.parse(fs.readFileSync(0,"utf8")).next')
+curl -sS "localhost:3999$NEXT" | cat
+```
 - `PATCH /commitments/:id` (validated patch)
 
 ### Claim/lock semantics (MVP)
