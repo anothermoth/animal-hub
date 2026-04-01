@@ -227,5 +227,9 @@ Both `GET /events` and `GET /cases/:id/events` support an optional `kind` filter
   - cursor pagination: `afterSeq`, `sinceTs`, `limit`
   - example: `/events?afterSeq=0&limit=200`
 
+### Meta
+- `GET /meta/event-kinds` (supports `HEAD`)
+- `GET /meta/enums` (supports `HEAD`)
+
 ## Docs
 - See **docs/DESIGN.md** for the system design + roadmap.
