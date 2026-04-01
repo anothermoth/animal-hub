@@ -281,6 +281,27 @@ function buildNextOffsetUrl(req, nextOffset) {
   }
 }
 
+function commitmentMatchesQuery(rec, query) {
+  if (!query) return true;
+  const q = String(query).trim().toLowerCase();
+  if (!q) return true;
+
+  const fields = [
+    rec?.commitId,
+    rec?.caseId,
+    rec?.type,
+    rec?.status,
+    rec?.party?.name,
+    rec?.party?.org,
+    rec?.party?.email,
+    rec?.party?.phone,
+  ]
+    .filter((v) => typeof v === 'string' && v.trim().length)
+    .map((v) => v.trim().toLowerCase());
+
+  return fields.join(' | ').includes(q);
+}
+
 export function buildApp(opts = {}) {
   const app = Fastify({ logger: true, ...opts.fastify });
 
@@ -722,20 +743,7 @@ export function buildApp(opts = {}) {
 
     let all = listCommitmentsForCase(c.caseId);
     if (query) {
-      all = all.filter((rec) => {
-        const fields = [
-          rec.commitId,
-          rec.type,
-          rec.status,
-          rec.party?.name,
-          rec.party?.org,
-          rec.party?.email,
-          rec.party?.phone,
-        ]
-          .filter((v) => typeof v === 'string' && v.trim().length)
-          .map((v) => v.trim().toLowerCase());
-        return fields.join(' | ').includes(query);
-      });
+      all = all.filter((rec) => commitmentMatchesQuery(rec, query));
     }
 
     const total = all.length;
@@ -1022,23 +1030,7 @@ export function buildApp(opts = {}) {
       if (typeSet && !typeSet.has(rec.type)) continue;
       if (statusSet && !statusSet.has(rec.status)) continue;
 
-      if (query) {
-        const fields = [
-          rec.commitId,
-          rec.caseId,
-          rec.type,
-          rec.status,
-          rec.party?.name,
-          rec.party?.org,
-          rec.party?.email,
-          rec.party?.phone,
-        ]
-          .filter((v) => typeof v === 'string' && v.trim().length)
-          .map((v) => v.trim().toLowerCase());
-
-        const haystack = fields.join(' | ');
-        if (!haystack.includes(query)) continue;
-      }
+      if (!commitmentMatchesQuery(rec, query)) continue;
       items.push(rec);
     }
     items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
