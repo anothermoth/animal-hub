@@ -655,6 +655,63 @@ test('PATCH /cases/:id enforces claim for status changes and emits STATUS_CHANGE
   await app.close();
 });
 
+test('PATCH /cases/:id validates body (strict keys + enums + date + location.state)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+
+  // strict unknown key
+  const extra = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { nope: true },
+  });
+  assert.equal(extra.statusCode, 400);
+
+  // bad enums
+  const badRisk = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { riskLevel: 'NOPE' },
+  });
+  assert.equal(badRisk.statusCode, 400);
+
+  const badStatus = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { status: 'NOPE' },
+  });
+  assert.equal(badStatus.statusCode, 400);
+
+  // bad date
+  const badDeadline = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { deadlineAt: 'not-a-date' },
+  });
+  assert.equal(badDeadline.statusCode, 400);
+
+  // bad state
+  const badState = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { location: { state: 'TEX' } },
+  });
+  assert.equal(badState.statusCode, 400);
+
+  // ok patch
+  const ok = await app.inject({
+    method: 'PATCH',
+    url: `/cases/${c.caseId}`,
+    payload: { notes: 'hello', riskLevel: 'MED', location: { state: 'TX' } },
+  });
+  assert.equal(ok.statusCode, 200);
+  assert.equal(ok.json().notes, 'hello');
+
+  await app.close();
+});
+
 test('PATCH /cases/:id/status provides strict status transitions', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

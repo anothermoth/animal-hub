@@ -116,6 +116,38 @@ const CreateCaseBody = z
   })
   .strict();
 
+const PatchCaseBody = z
+  .object({
+    externalIds: z.array(z.string()).optional(),
+    name: z.string().min(1).optional(),
+    species: z.string().optional(),
+    sex: z.string().optional(),
+    ageApprox: z.string().optional(),
+    breedGuess: z.string().optional(),
+    shelter: z.record(z.string(), z.any()).optional(),
+    deadlineAt: z
+      .string()
+      .optional()
+      .refine((v) => v == null || !Number.isNaN(new Date(v).getTime()), { message: 'must be ISO date string' }),
+    riskLevel: RiskLevel.optional(),
+    status: CaseStatus.optional(),
+    location: z
+      .object({
+        city: z.string().optional(),
+        state: z.string().min(2).max(2).optional(),
+        lat: z.number().optional(),
+        lon: z.number().optional(),
+      })
+      .partial()
+      .optional(),
+    notes: z.string().optional(),
+    media: z.array(z.string()).optional(),
+
+    // Used only for claim-enforced status changes.
+    claimant: z.string().min(1).optional(),
+  })
+  .strict();
+
 const ListCasesQuery = z
   .object({
     status: z.string().optional(), // comma-separated
@@ -660,7 +692,12 @@ export function buildApp(opts = {}) {
     const existing = cases.get(req.params.id);
     if (!existing) return reply.code(404).send({ error: 'not_found' });
 
-    const body = req.body ?? {};
+    const parsed = PatchCaseBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
+    }
+
+    const body = parsed.data;
     const nowMs = Date.now();
     const now = new Date(nowMs).toISOString();
 
@@ -684,7 +721,16 @@ export function buildApp(opts = {}) {
       }
     }
 
-    const updated = { ...existing, ...body, updatedAt: now };
+    // Never allow primary identity / timestamps to be overwritten.
+    const {
+      caseId: _caseId,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      claim: _claim,
+      ...rest
+    } = body;
+
+    const updated = { ...existing, ...rest, updatedAt: now };
     cases.set(existing.caseId, updated);
     emitEvent({ kind: 'CASE_UPDATED', caseId: existing.caseId, ts: now, payload: updated });
 
