@@ -1123,6 +1123,37 @@ test('GET /commitments supports q= free-text filtering (case-insensitive)', asyn
   await app.close();
 });
 
+test('GET /commitments supports sort=updatedAt:desc (recent activity first)', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const a = (
+    await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER' } })
+  ).json();
+  const b = (
+    await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'TRANSPORT' } })
+  ).json();
+
+  // Touch a to bump updatedAt.
+  const patched = await app.inject({ method: 'PATCH', url: `/commitments/${a.commitId}`, payload: { status: 'CONFIRMED' } });
+  assert.equal(patched.statusCode, 200);
+
+  const res = await app.inject({ method: 'GET', url: '/commitments?sort=updatedAt:desc' });
+  assert.equal(res.statusCode, 200);
+  const items = res.json().items;
+  const idxA = items.findIndex((x) => x.commitId === a.commitId);
+  const idxB = items.findIndex((x) => x.commitId === b.commitId);
+  assert.ok(idxA !== -1 && idxB !== -1);
+  assert.ok(idxA < idxB);
+
+  const bad = await app.inject({ method: 'GET', url: '/commitments?sort=nope' });
+  assert.equal(bad.statusCode, 400);
+  assert.equal(bad.json().error, 'bad_query_sort');
+
+  await app.close();
+});
+
 test('GET /commitments supports offset/limit pagination', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

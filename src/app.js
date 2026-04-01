@@ -176,6 +176,7 @@ const ListCommitmentsQuery = z
     q: z.string().optional(),
     type: z.string().optional(), // comma-separated
     status: z.string().optional(), // comma-separated
+    sort: z.string().optional(),
     limit: z.string().optional(),
     offset: z.string().optional(),
   })
@@ -1034,6 +1035,13 @@ export function buildApp(opts = {}) {
 
     const caseId = parsed.data.caseId ? String(parsed.data.caseId) : null;
     const query = parsed.data.q ? String(parsed.data.q).trim() : null;
+
+    // Sort options (default createdAt:asc for stable pagination)
+    // - createdAt:asc|desc
+    // - updatedAt:asc|desc
+    const sortRaw = parsed.data.sort ? String(parsed.data.sort).trim() : '';
+    const sort = sortRaw || 'createdAt:asc';
+    const cmpStr = (a, b) => String(a).localeCompare(String(b));
     const typeSetParsed = parseCsvEnumSet(parsed.data.type, CommitmentType);
     if (typeSetParsed?.error) return reply.code(400).send({ error: 'bad_query_type' });
     const typeSet = typeSetParsed;
@@ -1055,7 +1063,24 @@ export function buildApp(opts = {}) {
       if (!commitmentMatchesQuery(rec, query)) continue;
       items.push(rec);
     }
-    items.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+
+    if (sort === 'createdAt:asc') {
+      items.sort((a, b) => cmpStr(a.createdAt, b.createdAt));
+    } else if (sort === 'createdAt:desc') {
+      items.sort((a, b) => cmpStr(b.createdAt, a.createdAt));
+    } else if (sort === 'updatedAt:asc') {
+      items.sort((a, b) => {
+        const u = cmpStr(a.updatedAt, b.updatedAt);
+        return u !== 0 ? u : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else if (sort === 'updatedAt:desc') {
+      items.sort((a, b) => {
+        const u = cmpStr(b.updatedAt, a.updatedAt);
+        return u !== 0 ? u : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else {
+      return reply.code(400).send({ error: 'bad_query_sort' });
+    }
 
     const total = items.length;
     const paged = items.slice(offset, offset + limit);
