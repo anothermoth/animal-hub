@@ -34,6 +34,18 @@ function persistState() {
   }
 }
 
+const stateFlushMs = Math.max(0, Math.floor(Number(process.env.STATE_FLUSH_MS ?? 1000) || 1000));
+let pendingFlush = false;
+function schedulePersist() {
+  if (!stateFile) return;
+  if (pendingFlush) return;
+  pendingFlush = true;
+  setTimeout(() => {
+    pendingFlush = false;
+    persistState();
+  }, stateFlushMs).unref();
+}
+
 const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPORT,FOSTER')
   .split(',')
   .map((s) => s.trim())
@@ -142,7 +154,7 @@ function applyEvent(e) {
   if (typeof e.seq === 'number') {
     const prev = lastSeq;
     lastSeq = Math.max(lastSeq, e.seq);
-    if (lastSeq !== prev) persistState();
+    if (lastSeq !== prev) schedulePersist();
   }
 
   if (e.kind === 'CASE_CREATED' || e.kind === 'CASE_UPDATED') {

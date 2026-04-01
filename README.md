@@ -133,6 +133,8 @@ Tip: you can persist `lastSeq` automatically with `STATE_FILE`:
 ```bash
 STATE_FILE=.client-state.json BASE_URL=http://localhost:3999 node examples/minimal-client.js
 ```
+
+By default, the client flushes `STATE_FILE` at most once per second; you can override with `STATE_FLUSH_MS`.
 ```
 
 To watch events without adding any deps, you can use a tiny Node one-liner:
