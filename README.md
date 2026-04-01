@@ -278,6 +278,11 @@ Create endpoints support an optional `Idempotency-Key` request header.
 - `POST /cases`
 - `POST /cases/:id/commitments` (key is scoped per-case)
 
+Claim endpoints also support `Idempotency-Key` so clients can safely retry without generating duplicate claim/release events:
+
+- `POST /cases/:id/claim`
+- `POST /cases/:id/release`
+
 If a client retries the same request with the same key (e.g. due to a timeout), the server will return the originally-created object instead of creating a duplicate.
 
 Notes:
