@@ -359,6 +359,16 @@ curl -sS "localhost:3999$NEXT" | cat
 - `GET /cases/:id/commitments` (filters: `q`; sorting: `sort`; pagination: `limit`, `offset` — response includes `nextOffset` and `next`)
   - `q` supports multiple terms (split on whitespace, AND semantics)
   - `sort` supports: `createdAt:asc`, `createdAt:desc`, `updatedAt:asc`, `updatedAt:desc`
+
+Example (page with `next`):
+
+```bash
+CASE_ID=... # set this
+R1=$(curl -sS "localhost:3999/cases/$CASE_ID/commitments?limit=2&offset=0&sort=createdAt:asc")
+echo "$R1" | cat
+NEXT=$(echo "$R1" | node -p 'JSON.parse(fs.readFileSync(0,"utf8")).next')
+curl -sS "localhost:3999$NEXT" | cat
+```
 - `GET /commitments/:id`
 - `GET /commitments`
   - filters: `caseId`, `type`, `status` (type/status are comma-separated), `q`
