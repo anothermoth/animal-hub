@@ -62,6 +62,29 @@ test('GET /cases supports offset/limit pagination', async () => {
   await app.close();
 });
 
+test('GET /cases/:id supports ETag / 304 Not Modified', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const created = await app.inject({ method: 'POST', url: '/cases', payload: { name: 'etaggable' } });
+  assert.equal(created.statusCode, 201);
+  const c = created.json();
+
+  const first = await app.inject({ method: 'GET', url: `/cases/${c.caseId}` });
+  assert.equal(first.statusCode, 200);
+  assert.ok(first.headers.etag);
+
+  const etag = first.headers.etag;
+  const notModified = await app.inject({
+    method: 'GET',
+    url: `/cases/${c.caseId}`,
+    headers: { 'if-none-match': etag },
+  });
+  assert.equal(notModified.statusCode, 304);
+
+  await app.close();
+});
+
 test('GET /cases rejects unknown risk/status values', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();

@@ -509,6 +509,9 @@ export function buildApp(opts = {}) {
   app.get('/cases/:id', async (req, reply) => {
     const c = cases.get(req.params.id);
     if (!c) return reply.code(404).send({ error: 'not_found' });
+
+    const etag = setMetaCacheHeaders(reply, c);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return c;
   });
 
