@@ -185,6 +185,7 @@ const ListCommitmentsQuery = z
 const ListCaseCommitmentsQuery = z
   .object({
     q: z.string().optional(),
+    sort: z.string().optional(),
     limit: z.string().optional(),
     offset: z.string().optional(),
   })
@@ -763,10 +764,31 @@ export function buildApp(opts = {}) {
     const { limit, offset } = lo;
 
     const query = parsed.data.q ? String(parsed.data.q).trim() : null;
+    const sortRaw = parsed.data.sort ? String(parsed.data.sort).trim() : '';
+    const sort = sortRaw || 'createdAt:asc';
+    const cmpStr = (a, b) => String(a).localeCompare(String(b));
 
     let all = listCommitmentsForCase(c.caseId);
     if (query) {
       all = all.filter((rec) => commitmentMatchesQuery(rec, query));
+    }
+
+    if (sort === 'createdAt:asc') {
+      // already stable-sorted by createdAt in listCommitmentsForCase
+    } else if (sort === 'createdAt:desc') {
+      all = all.slice().reverse();
+    } else if (sort === 'updatedAt:asc') {
+      all = all.slice().sort((a, b) => {
+        const u = cmpStr(a.updatedAt, b.updatedAt);
+        return u !== 0 ? u : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else if (sort === 'updatedAt:desc') {
+      all = all.slice().sort((a, b) => {
+        const u = cmpStr(b.updatedAt, a.updatedAt);
+        return u !== 0 ? u : cmpStr(a.createdAt, b.createdAt);
+      });
+    } else {
+      return reply.code(400).send({ error: 'bad_query_sort' });
     }
 
     const total = all.length;

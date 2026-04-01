@@ -492,6 +492,32 @@ test('GET /cases/:id/commitments supports q= free-text filtering', async () => {
   await app.close();
 });
 
+test('GET /cases/:id/commitments supports sort=updatedAt:desc', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+  const a = (await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'FOSTER' } })).json();
+  const b = (await app.inject({ method: 'POST', url: `/cases/${c.caseId}/commitments`, payload: { type: 'TRANSPORT' } })).json();
+
+  // Touch a so it becomes most recently updated.
+  await app.inject({ method: 'PATCH', url: `/commitments/${a.commitId}`, payload: { status: 'CONFIRMED' } });
+
+  const res = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?sort=updatedAt:desc` });
+  assert.equal(res.statusCode, 200);
+  const items = res.json().items;
+  const idxA = items.findIndex((x) => x.commitId === a.commitId);
+  const idxB = items.findIndex((x) => x.commitId === b.commitId);
+  assert.ok(idxA !== -1 && idxB !== -1);
+  assert.ok(idxA < idxB);
+
+  const bad = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/commitments?sort=nope` });
+  assert.equal(bad.statusCode, 400);
+  assert.equal(bad.json().error, 'bad_query_sort');
+
+  await app.close();
+});
+
 test('GET /cases/:id/events returns an append-only event list for a case', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
