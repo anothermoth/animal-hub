@@ -87,6 +87,10 @@ test('GET /meta/event-kinds returns supported kinds', async () => {
   assert.ok(Object.prototype.hasOwnProperty.call(body, 'version'));
   assert.ok(res.headers.etag);
 
+  const etag = res.headers.etag;
+  const notModified = await app.inject({ method: 'GET', url: '/meta/event-kinds', headers: { 'if-none-match': etag } });
+  assert.equal(notModified.statusCode, 304);
+
   await app.close();
 });
 
@@ -100,6 +104,10 @@ test('GET /meta/enums returns enum lists for clients', async () => {
   assert.ok(body.enums);
   assert.ok(Object.prototype.hasOwnProperty.call(body, 'version'));
   assert.ok(res.headers.etag);
+
+  const etag = res.headers.etag;
+  const notModified = await app.inject({ method: 'GET', url: '/meta/enums', headers: { 'if-none-match': etag } });
+  assert.equal(notModified.statusCode, 304);
   assert.ok(Array.isArray(body.enums.caseStatus));
   assert.ok(body.enums.riskLevel.includes('CODE_RED'));
   assert.ok(body.enums.commitmentType.includes('TRANSPORT'));

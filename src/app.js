@@ -175,7 +175,9 @@ export function buildApp(opts = {}) {
   function setMetaCacheHeaders(reply, payloadObj) {
     reply.header('cache-control', 'public, max-age=60');
     const etag = crypto.createHash('sha256').update(JSON.stringify(payloadObj)).digest('hex');
-    reply.header('etag', `\"${etag}\"`);
+    const etagQuoted = `\"${etag}\"`;
+    reply.header('etag', etagQuoted);
+    return etagQuoted;
   }
 
   /**
@@ -225,15 +227,17 @@ export function buildApp(opts = {}) {
 
   app.get('/healthz', async () => ({ ok: true }));
 
-  app.get('/meta/enums', async (_req, reply) => {
+  app.get('/meta/enums', async (req, reply) => {
     const payload = { enums: ENUMS, version: metaVersion };
-    setMetaCacheHeaders(reply, payload);
+    const etag = setMetaCacheHeaders(reply, payload);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return payload;
   });
 
-  app.get('/meta/event-kinds', async (_req, reply) => {
+  app.get('/meta/event-kinds', async (req, reply) => {
     const payload = { items: EVENT_KINDS, version: metaVersion };
-    setMetaCacheHeaders(reply, payload);
+    const etag = setMetaCacheHeaders(reply, payload);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return payload;
   });
 
