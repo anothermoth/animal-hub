@@ -410,6 +410,7 @@ test('GET /cases/:id/events returns an append-only event list for a case', async
 
   const ev = await app.inject({ method: 'GET', url: `/cases/${c.caseId}/events` });
   assert.equal(ev.statusCode, 200);
+  assert.equal(ev.headers['cache-control'], 'no-store');
   const body = ev.json();
 
   // CASE_CREATED + COMMITMENT_CREATED + CASE_UPDATED
@@ -473,6 +474,7 @@ test('GET /events returns a global event feed (optionally filtered by caseId)', 
 
   const all = await app.inject({ method: 'GET', url: '/events?limit=10&afterSeq=0' });
   assert.equal(all.statusCode, 200);
+  assert.equal(all.headers['cache-control'], 'no-store');
   const a = all.json();
   assert.ok(a.items.length >= 4);
 

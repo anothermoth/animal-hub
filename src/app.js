@@ -278,6 +278,10 @@ export function buildApp(opts = {}) {
   // Global event stream (useful for dashboards / "what changed" views).
   // Supports the same cursors as /cases/:id/events.
   app.get('/events', async (req, reply) => {
+    // Event feeds should not be cached by intermediaries (they're inherently time-sensitive).
+    // Clients can still use their own cursors (afterSeq/sinceTs) for efficient polling.
+    reply.header('cache-control', 'no-store');
+
     const parsed = ListEventsQuery.safeParse(req.query ?? {});
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
     const q = parsed.data;
@@ -345,6 +349,8 @@ export function buildApp(opts = {}) {
   app.get('/cases/:id/events', async (req, reply) => {
     const c = cases.get(req.params.id);
     if (!c) return reply.code(404).send({ error: 'case_not_found' });
+
+    reply.header('cache-control', 'no-store');
 
     const parsed = ListEventsQuery.safeParse(req.query ?? {});
     if (!parsed.success) return reply.code(400).send({ error: 'bad_query', details: parsed.error.flatten() });
