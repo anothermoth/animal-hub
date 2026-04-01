@@ -190,6 +190,38 @@ export function buildApp(opts = {}) {
   const events = opts.events ?? [];
   let eventSeq = opts.eventSeq ?? 0;
 
+  // Basic idempotency support (in-memory): allows clients to safely retry POSTs.
+  // Keys are intentionally bounded to avoid unbounded memory growth.
+  const idempotency = opts.idempotency ?? {
+    cases: new Map(), // key -> caseId
+    commitments: new Map(), // `${caseId}:${key}` -> commitId
+    order: [],
+    max: 1000,
+  };
+
+  function getIdempotencyKey(req) {
+    const raw = req?.headers?.['idempotency-key'];
+    if (!raw) return null;
+    const key = String(raw).trim();
+    if (!key) return null;
+    // Avoid pathological keys. (Not a security boundary, just sanity.)
+    if (key.length > 200) return key.slice(0, 200);
+    return key;
+  }
+
+  function rememberIdempotency(type, key, id) {
+    if (!key) return;
+    if (type === 'case') idempotency.cases.set(key, id);
+    if (type === 'commitment') idempotency.commitments.set(key, id);
+    idempotency.order.push({ type, key });
+    while (idempotency.order.length > (idempotency.max ?? 1000)) {
+      const oldest = idempotency.order.shift();
+      if (!oldest) break;
+      if (oldest.type === 'case') idempotency.cases.delete(oldest.key);
+      if (oldest.type === 'commitment') idempotency.commitments.delete(oldest.key);
+    }
+  }
+
   function listCommitmentsForCase(caseId) {
     const items = [];
     for (const rec of commitments.values()) {
@@ -415,6 +447,14 @@ export function buildApp(opts = {}) {
   });
 
   app.post('/cases', async (req, reply) => {
+    const idemKey = getIdempotencyKey(req);
+    if (idemKey && idempotency.cases.has(idemKey)) {
+      const existingId = idempotency.cases.get(idemKey);
+      const existing = existingId ? cases.get(existingId) : null;
+      if (existing) return reply.code(201).send(existing);
+      // If the referenced record is missing, fall through and create anew.
+    }
+
     const parsed = CreateCaseBody.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
@@ -442,6 +482,7 @@ export function buildApp(opts = {}) {
       updatedAt: now,
     };
     cases.set(caseId, record);
+    rememberIdempotency('case', idemKey, caseId);
     emitEvent({ kind: 'CASE_CREATED', caseId, ts: now, payload: record });
     return reply.code(201).send(record);
   });
@@ -695,6 +736,15 @@ export function buildApp(opts = {}) {
     const c = cases.get(req.params.id);
     if (!c) return reply.code(404).send({ error: 'case_not_found' });
 
+    const idemKey = getIdempotencyKey(req);
+    const commitIdemKey = idemKey ? `${c.caseId}:${idemKey}` : null;
+    if (commitIdemKey && idempotency.commitments.has(commitIdemKey)) {
+      const existingId = idempotency.commitments.get(commitIdemKey);
+      const existing = existingId ? commitments.get(existingId) : null;
+      if (existing) return reply.code(201).send(existing);
+      // If referenced record is missing, fall through and create anew.
+    }
+
     const parsed = CreateCommitmentBody.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'bad_body', details: parsed.error.flatten() });
@@ -714,6 +764,7 @@ export function buildApp(opts = {}) {
       updatedAt: now,
     };
     commitments.set(commitId, rec);
+    rememberIdempotency('commitment', commitIdemKey, commitId);
     emitEvent({ kind: 'COMMITMENT_CREATED', caseId: c.caseId, ts: now, payload: rec });
     return reply.code(201).send(rec);
   });

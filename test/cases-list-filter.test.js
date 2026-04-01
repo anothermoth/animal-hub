@@ -573,6 +573,74 @@ test('POST /cases validates riskLevel/status/deadlineAt/location.state', async (
   await app.close();
 });
 
+test('POST /cases supports Idempotency-Key to dedupe retries', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const r1 = await app.inject({
+    method: 'POST',
+    url: '/cases',
+    headers: { 'idempotency-key': 'case-123' },
+    payload: { name: 'Retry Me' },
+  });
+  assert.equal(r1.statusCode, 201);
+  const c1 = r1.json();
+
+  const r2 = await app.inject({
+    method: 'POST',
+    url: '/cases',
+    headers: { 'idempotency-key': 'case-123' },
+    payload: { name: 'Retry Me (different body ignored for now)' },
+  });
+  assert.equal(r2.statusCode, 201);
+  const c2 = r2.json();
+  assert.equal(c2.caseId, c1.caseId);
+
+  // Ensure we did not emit a duplicate CASE_CREATED.
+  const ev = await app.inject({ method: 'GET', url: '/events?afterSeq=0&kind=CASE_CREATED&limit=50' });
+  assert.equal(ev.statusCode, 200);
+  const createdEvents = ev.json().items.filter((e) => e.kind === 'CASE_CREATED' && e.caseId === c1.caseId);
+  assert.equal(createdEvents.length, 1);
+
+  await app.close();
+});
+
+test('POST /cases/:id/commitments supports Idempotency-Key to dedupe retries', async () => {
+  const app = buildApp({ fastify: { logger: false } });
+  await app.ready();
+
+  const c = (await app.inject({ method: 'POST', url: '/cases', payload: {} })).json();
+
+  const r1 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/commitments`,
+    headers: { 'idempotency-key': 'commit-123' },
+    payload: { type: 'TRANSPORT' },
+  });
+  assert.equal(r1.statusCode, 201);
+  const com1 = r1.json();
+
+  const r2 = await app.inject({
+    method: 'POST',
+    url: `/cases/${c.caseId}/commitments`,
+    headers: { 'idempotency-key': 'commit-123' },
+    payload: { type: 'TRANSPORT' },
+  });
+  assert.equal(r2.statusCode, 201);
+  const com2 = r2.json();
+  assert.equal(com2.commitId, com1.commitId);
+
+  const ev = await app.inject({
+    method: 'GET',
+    url: `/events?afterSeq=0&kind=COMMITMENT_CREATED&caseId=${encodeURIComponent(c.caseId)}&limit=50`,
+  });
+  assert.equal(ev.statusCode, 200);
+  const createdEvents = ev.json().items.filter((e) => e.kind === 'COMMITMENT_CREATED' && e.payload?.commitId === com1.commitId);
+  assert.equal(createdEvents.length, 1);
+
+  await app.close();
+});
+
 test('POST /cases/:id/commitments validates enums and rejects extra keys', async () => {
   const app = buildApp({ fastify: { logger: false } });
   await app.ready();
