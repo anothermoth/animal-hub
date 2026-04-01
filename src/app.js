@@ -355,16 +355,12 @@ export function buildApp(opts = {}) {
     }
 
     const ws = socket?.send ? socket : socket?.socket;
-    if (!ws || typeof ws.send !== 'function') {
-      // Should never happen, but don't 500 the upgrade if it does.
-      return;
-    }
+    if (!ws || typeof ws.send !== 'function') return;
 
-    // Store { ws, kindSet } so we can filter on send.
     const sub = { ws, kindSet };
     subscribers.add(sub);
-    ws.send(JSON.stringify({ type: 'hello', ts: new Date().toISOString() }));
-    ws.on('close', () => subscribers.delete(sub));
+    ws.send?.(JSON.stringify({ type: 'hello', ts: new Date().toISOString() }));
+    ws.on?.('close', () => subscribers.delete(sub));
   });
 
   app.post('/cases', async (req, reply) => {
