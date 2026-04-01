@@ -153,6 +153,8 @@ And fetch all client-facing enums (statuses, types, etc.):
 
 Both endpoints also return a `version` field (best-effort; may be `null`) to help clients invalidate caches.
 
+They also support conditional GET via `ETag` / `If-None-Match` (returns `304 Not Modified` on a match).
+
 ### Reconnect strategy (recommended)
 
 Each event includes a monotonically increasing `seq`. A common pattern is:
