@@ -46,6 +46,17 @@ function schedulePersist() {
   }, stateFlushMs).unref();
 }
 
+function flushAndExit(code = 0) {
+  try {
+    persistState();
+  } finally {
+    process.exit(code);
+  }
+}
+
+process.on('SIGINT', () => flushAndExit(0));
+process.on('SIGTERM', () => flushAndExit(0));
+
 const requiredTypes = String(process.env.REQUIRED_TYPES ?? 'RESCUE_PULL,TRANSPORT,FOSTER')
   .split(',')
   .map((s) => s.trim())
