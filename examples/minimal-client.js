@@ -32,6 +32,13 @@ if (mode === 'ops') {
     if (!has('DASHBOARD_EVERY_SEC')) process.env.DASHBOARD_EVERY_SEC = '0';
     if (!has('DASHBOARD_ON_CHANGE')) process.env.DASHBOARD_ON_CHANGE = '0';
   }
+  if (mode === 'signal-dashboard') {
+    if (!has('WS_KIND')) process.env.WS_KIND = 'STATUS_CHANGED,CASE_CLAIMED';
+    if (!has('SILENT_EVENTS')) process.env.SILENT_EVENTS = '1';
+    if (!has('SILENT_SUMMARIES')) process.env.SILENT_SUMMARIES = '1';
+    if (!has('DASHBOARD_ON_CHANGE')) process.env.DASHBOARD_ON_CHANGE = '1';
+    if (!has('DASHBOARD_EVERY_SEC')) process.env.DASHBOARD_EVERY_SEC = '300';
+  }
 }
 
 const silentEvents = process.env.SILENT_EVENTS === '1' || process.env.SILENT_EVENTS === 'true';
